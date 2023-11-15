@@ -1,0 +1,9 @@
+variables:  
+  IMAGE_NAME: "miniprogram/cafepcfront"
+
+
+include:
+  - project: 'security/gitlab-ci-template'
+    ref: 'v1'
+    file: 'Auto-DevOps.gitlab-ci.yml'
+

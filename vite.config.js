@@ -24,21 +24,22 @@ export default ({ mode }) => defineConfig({
     },
   },
   base: '',
-  // server: {
-  //   proxy: {
-  //     '/manage-api/v1': {
-  //       target: 'http://localhost:8888/manage-api/v1', // 凡是遇到 /api 路径的请求，都映射到 target 属性
-  //       changeOrigin: true,
-  //       rewrite: path => path.replace(/^\/manage-api\/v1/, '') // 重写 api 为 空，就是去掉它
-  //     }
-  //     ,
-  //     '/static': {
-  //       target: 'http://127.0.0.1:8888/', // 凡是遇到 /api 路径的请求，都映射到 target 属性
-  //       changeOrigin: true,
+  publicPath:"",
+  server: {
+    proxy: {
+      '/getData': {
+        target: 'http://182.92.109.149/getData', // 凡是遇到 /api 路径的请求，都映射到 target 属性
+        changeOrigin: true,
+        rewrite: path => path.replace(/^\/getData/, '') // 重写 api 为 空，就是去掉它
+      }
+      ,
+      '/static': {
+        target: 'http://127.0.0.1:8888/', // 凡是遇到 /api 路径的请求，都映射到 target 属性
+        changeOrigin: true,
         
-  //     }
-  //   }
-  // },
+      }
+    }
+  },
   css: {
     preprocessorOptions: {
       // 覆盖掉element-plus包中的主题变量文件

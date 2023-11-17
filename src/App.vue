@@ -1,10 +1,10 @@
 <template>
   <div class="layout">
     <el-container v-if="state.showMenu" class="container">
-      <el-aside class="aside">
+      <!-- <el-aside class="aside">
         <div class="head">
           <div>
-            <!-- <img src="//s.weituibao.com/1582958061265/mlogo.png" alt="logo"> -->
+            <img src="//s.weituibao.com/1582958061265/mlogo.png" alt="logo">
             <span>控制台</span>
           </div>
         </div>
@@ -17,18 +17,18 @@
            :default-active='state.currentPath'
         >
 
-           <!-- <el-sub-menu index="2">
+           <el-sub-menu index="2">
             <template #title>
               <span>后台配置</span>
             </template>
             
-          </el-sub-menu> -->
-          <!-- <el-menu-item index="/commodity" ><el-icon><Picture /></el-icon>商品管理</el-menu-item>
-          <el-menu-item index="/franchise" ><el-icon><Picture /></el-icon>加盟店管理</el-menu-item> -->
+          </el-sub-menu>
+          <el-menu-item index="/commodity" ><el-icon><Picture /></el-icon>商品管理</el-menu-item>
+          <el-menu-item index="/franchise" ><el-icon><Picture /></el-icon>加盟店管理</el-menu-item>
           <el-menu-item index="/other" ><el-icon><Picture /></el-icon>other</el-menu-item>
           
         </el-menu>
-      </el-aside>
+      </el-aside> -->
       <el-container class="content">
         <Header />
         <div class="main">
@@ -37,9 +37,9 @@
         <Footer />
       </el-container>
     </el-container>
-    <el-container v-else class="container">
+    <!-- <el-container v-else class="container">
       <router-view />
-    </el-container>
+    </el-container> -->
   </div>
 </template>
 
@@ -78,7 +78,7 @@ router.beforeEach((to, from, next) => {
   //   }
   // }
   state.currentPath = to.path
-  document.title = pathMap[to.name]
+  // document.title = pathMap[to.name]
 })
 </script>
 

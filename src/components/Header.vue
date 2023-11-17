@@ -36,17 +36,17 @@ import { localRemove, pathMap } from '@/utils'
 
 const router = useRouter()
 const state = reactive({
-  name: '商户配置',
+  name: 'cp',
   userInfo: null, // 用户信息变量
   hasBack: false, // 是否展示返回icon
 })
 // 初始化执行方法
-  onMounted(() => {
-  const pathname = window.location.hash.split('/')[1] || ''
-  if (!['login'].includes(pathname)) {
-    getUserInfo()
-  }
-})
+//   onMounted(() => {
+//   const pathname = window.location.hash.split('/')[1] || ''
+//   if (!['login'].includes(pathname)) {
+//     // getUserInfo()
+//   }
+// })
 // 获取用户信息
 const getUserInfo = async () => {
   const userInfo = await axios.get('/adminUser/profile')
@@ -62,13 +62,13 @@ const logout = () => {
   })
 }
 
-router.afterEach((to) => {
-  const { id } = to.query
-  state.name = pathMap[to.name]
-  // level2 和 level3 需要展示返回icon
-  console.log('to.name', to.name)
-  state.hasBack = ['level2', 'level3'].includes(to.name)
-})
+// router.afterEach((to) => {
+//   const { id } = to.query
+//   state.name = pathMap[to.name]
+//   // level2 和 level3 需要展示返回icon
+//   console.log('to.name', to.name)
+//   state.hasBack = ['level2', 'level3'].includes(to.name)
+// })
 
 // 返回方法
 const back = () => {

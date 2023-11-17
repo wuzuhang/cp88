@@ -1,82 +1,62 @@
 <template>
-  <el-card class="category-container">
+  <el-card class="category-container" v-loading="state.loading">
     <template #header>
       <div class="header">
-        <el-upload class="upload-demo" :http-request="readxls">
+        <!-- <el-upload class="upload-demo" :http-request="readxls" style="margin-bottom:10px">
           <el-button type="primary">Click to upload</el-button>
-        </el-upload>
-        <el-select
-          style="margin-left: 20px"
-          v-model="state.option"
-          placeholder="Select"
-        >
-          <el-option
-            v-for="item in state.options"
-            :key="item"
-            :label="item"
-            :value="item"
+        </el-upload> -->
+        <div>
+          <label class="myLabel">样本数量：</label>
+          <el-select
+            style="margin-left: 20px; margin-bottom: 10px"
+            v-model="state.option"
+            placeholder="Select"
+          >
+            <el-option
+              v-for="item in state.options"
+              :key="item"
+              :label="item"
+              :value="item"
+            />
+          </el-select>
+        </div>
+        <div>
+          <label class="myLabel">最近期次开奖结果：</label>
+          <el-input-number
+            style="width: 175px; margin-bottom: 10px"
+            v-model="state.startNum"
           />
-        </el-select>
-        <el-input-number v-model="state.startNum" />
+        </div>
+
         <el-button
           @click="setUp(state.option, state.startNum)"
-          style="margin-left: 20px"
+          style="margin-left: 20px; margin-bottom: 10px"
           type="primary"
           >计算</el-button
         >
-        <el-button @click="barList" style="margin-left: 20px" type="primary"
+        <el-button
+          @click="barList"
+          style="margin-left: 20px; margin-bottom: 10px"
+          type="primary"
           >柱状图</el-button
         >
-        <el-button @click="random" style="margin-left: 20px" type="primary"
-          >随机数</el-button
+        <el-button
+          @click="random"
+          style="margin-left: 20px; margin-bottom: 10px"
+          type="primary"
+          >随机生成开奖结果</el-button
+        >
+        <el-button
+          @click="reload"
+          style="margin-left: 20px; margin-bottom: 10px"
+          type="primary"
+          >重置</el-button
         >
         <!-- @click="setUp(state.option, state.startNum)" -->
-        <div class="dataTime">{{ state.time }}</div>
-        <div class="dataTime">{{ state.allred }}</div>
+        <div class="dataTime">期次：{{ state.time }}</div>
+        <div class="dataTime">百分百总和：{{ state.allred }}</div>
       </div>
     </template>
-    <div class="border" v-if="false">
-      <div class="head">
-        <div
-          v-for="item in 33"
-          :class="{ right: item == 11 || item == 22 || item == 33 }"
-        >
-          {{ item }}
-        </div>
-        <div v-for="item in 16">{{ item }}</div>
-      </div>
-      <div class="body">
-        <div class="row" v-for="(item, index) in state.showList">
-          <div
-            class="cow"
-            v-for="(items, indexs) in item"
-            :class="{
-              right:
-                (indexs == 10 && items.class != 'blue') ||
-                indexs == 21 ||
-                indexs == 32,
-              red: items.select && items.class == 'red',
-              blue: items.select && items.class == 'blue',
-            }"
-          >
-            {{ items.value }}
-          </div>
-        </div>
-      </div>
-      <div class="footer">
-        <div class="footers">
-          <div
-            v-for="(item, index) in state.redFooter"
-            :class="{ right: index == 10 || index == 21 || index == 32 }"
-          >
-            {{ item }}
-          </div>
-          <div v-for="(item, index) in state.blueFooter">
-            {{ item }}
-          </div>
-        </div>
-      </div>
-    </div>
     <div class="nums">
       <div class="red">
         <div
@@ -86,9 +66,9 @@
           @click="redclick(item)"
         >
           <span class="nonum">{{ index + 1 }}</span
-          >&nbsp;&nbsp;&nbsp;&nbsp; <span>{{ item.value }}</span
-          >&nbsp;&nbsp;&nbsp;&nbsp;
-          <span>{{ item.abs }}</span>
+          >&nbsp; <span>{{ item.value }}</span
+          >&nbsp;
+          <span>{{ item.abs.toFixed(5) }}%</span>
         </div>
       </div>
       <div class="blue">
@@ -99,9 +79,9 @@
           @click="redclick(item)"
         >
           <span class="nonum">{{ index + 1 }}</span
-          >&nbsp;&nbsp;&nbsp;&nbsp; <span>{{ item.value }}</span
-          >&nbsp;&nbsp;&nbsp;&nbsp;
-          <span>{{ item.abs }}</span>
+          >&nbsp; <span>{{ item.value }}</span
+          >&nbsp;
+          <span>{{ item.abs.toFixed(5) }}%</span>
         </div>
       </div>
     </div>
@@ -112,6 +92,7 @@
 
 <script setup>
 import { reactive, ref, onMounted } from "vue";
+import axios from "@/utils/axios";
 import * as echarts from "echarts";
 import { read, utils, writeFile } from "xlsx";
 import { ElMessage, ElMessageBox } from "element-plus";
@@ -134,39 +115,39 @@ const state = reactive({
   redbar: [],
   bluebar: [],
   allred: 0,
+  loading: false,
 });
 const redbar = ref(null);
 const bluebar = ref(null);
 onMounted(() => {
-  if (localStorage.getItem("data")) {
-    state.xlsxList = JSON.parse(localStorage.getItem("data"));
-  }
+  init();
 });
-const readxls = async (e) => {
-  const ab = await e.file.arrayBuffer();
-  /* parse */
-  const wb = read(ab);
-
-  /* generate array of objects from first worksheet */
-  const ws = wb.Sheets[wb.SheetNames[0]]; // get the first worksheet
-  const data = utils.sheet_to_json(ws); // generate objects
-  state.xlsxList = data.reverse();
-  localStorage.setItem("data", JSON.stringify(state.xlsxList));
-  /* update state */
-  //   pres.value = data;
+const init = () => {
+  state.loading = true;
+  axios.get("ssq.TXT").then((res) => {
+    let list = res.split("\n").reverse();
+    let datalist = [];
+    list.forEach((item) => {
+      let ddlist = item.split(" ");
+      datalist.push(ddlist);
+    });
+    state.xlsxList = datalist;
+    setUp(state.option, state.startNum);
+    state.loading = false;
+  });
 };
 const setUp = (option, num) => {
   if (num > 0) {
     const data = state.xlsxList[num - 1];
     state.redyes = [
-      data["__EMPTY_2"],
-      data["__EMPTY_3"],
-      data["__EMPTY_4"],
-      data["__EMPTY_5"],
-      data["__EMPTY_6"],
-      data["__EMPTY_7"],
+      parseFloat(data[2]),
+      parseFloat(data[3]),
+      parseFloat(data[4]),
+      parseFloat(data[5]),
+      parseFloat(data[6]),
+      parseFloat(data[7]),
     ];
-    state.blueyes = data["__EMPTY_8"];
+    state.blueyes = parseFloat(data[8]);
   } else {
     state.redyes = [];
     state.blueyes = "";
@@ -185,20 +166,18 @@ const setUp = (option, num) => {
     state.blueFooter.push(0);
   }
   let datalist = state.xlsxList.slice(num, option + num).reverse();
-  state.time =
-    datalist[0]["__EMPTY_1"] +
-    "------" +
-    datalist[datalist.length - 1]["__EMPTY_1"];
+  // 1 101
+  state.time = datalist[0][1] + "------" + datalist[datalist.length - 1][1];
   datalist.forEach((item, index) => {
     const red = [
-      item["__EMPTY_2"],
-      item["__EMPTY_3"],
-      item["__EMPTY_4"],
-      item["__EMPTY_5"],
-      item["__EMPTY_6"],
-      item["__EMPTY_7"],
+      parseFloat(item[2]),
+      parseFloat(item[3]),
+      parseFloat(item[4]),
+      parseFloat(item[5]),
+      parseFloat(item[6]),
+      parseFloat(item[7]),
     ];
-    const blue = [item["__EMPTY_8"]];
+    const blue = [parseFloat(item[8])];
     let num = [];
     for (var i = 1; i <= 33; i++) {
       if (red.includes(i)) {
@@ -347,26 +326,36 @@ const redclick = (a) => {
   a.clicked = !a.clicked;
 };
 const random = () => {
-  console.log(state.red,state.blue)
+  state.red.forEach((item) => {
+    item.clicked = false;
+  });
+  state.blue[0].clicked = false;
   var numbers = [];
   for (var i = 0; i < 6; i++) {
     var randomNumber;
-    
+
     do {
       randomNumber = Math.floor(Math.random() * 33) + 1;
     } while (numbers.includes(randomNumber));
 
     numbers.push(randomNumber);
-    state.red[randomNumber-1].clicked = true
+    state.red[randomNumber - 1].clicked = true;
   }
   var bluerandomNumber = Math.floor(Math.random() * 16) + 1;
-  state.blue[bluerandomNumber-1].clicked = true
+  state.blue[bluerandomNumber - 1].clicked = true;
+};
+const reload = () => {
+  location.reload();
 };
 </script>
 
 <style lang="less" scoped>
 .header {
+  // width:30%;
   display: flex;
+  flex-wrap:wrap;
+  // flex-direction:column;
+  justify-content:center;
 }
 .head {
   display: flex;
@@ -403,10 +392,12 @@ const random = () => {
   border-right: 2px solid #000000 !important;
 }
 .red {
+  width:calc(50% - 10px)
   // background-color: rgb(247, 145, 145);
   // color: #000000;
 }
 .blue {
+  width:calc(50% - 10px)
   // background-color: rgb(82, 125, 244);
   // color: #000000;
 }
@@ -425,19 +416,19 @@ const random = () => {
   }
 }
 .allred {
-  width: 20vw;
+  // width: 20vw;
   border-bottom: 2px solid #e62727;
 }
 .allblue {
-  width: 20vw;
+  // width: 20vw;
   border-bottom: 2px solid #273ae6;
 }
 .isred {
-  width: 20vw;
+  // width: 20vw;
   background-color: rgb(247, 145, 145);
 }
 .isblue {
-  width: 20vw;
+  // width: 20vw;
   background-color: rgb(82, 125, 244);
 }
 .nonum {
@@ -449,9 +440,17 @@ const random = () => {
 .nums {
   display: flex;
   cursor: pointer;
+   flex-wrap:wrap;
 }
 .bars {
   width: 100%;
   height: 400px;
+}
+.el-card__body{
+padding:5px!import;
+}
+.myLabel{
+  height:32px;
+  line-height:32px
 }
 </style>

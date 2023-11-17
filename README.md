@@ -1,1 +1,1 @@
-cafe-admin# cp88
+cafe-admin

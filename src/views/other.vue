@@ -41,7 +41,7 @@
           >随机生成开奖结果</el-button
         >
         <el-button
-          @click="setAll(state.startNum)"
+          @click="setAll"
           style="margin-left: 20px; margin-bottom: 10px"
           type="primary"
           >全样本计算</el-button
@@ -133,7 +133,7 @@ const state = reactive({
   blue: [],
   redyes: [],
   blueyes: [],
-  startNum: 0,
+  startNum: -1,
   redbar: [],
   bluebar: [],
   allred: 0,
@@ -156,7 +156,7 @@ const init = () => {
       datalist.push(ddlist);
     });
     state.xlsxList = datalist;
-    setAll(state.startNum);
+    setAll();
     state.loading = false;
   });
 };
@@ -371,7 +371,8 @@ const random = () => {
   var bluerandomNumber = Math.floor(Math.random() * state.blue.length) + 1;
   state.blue[bluerandomNumber - 1].clicked = true;
 };
-const setAll = (startNum) => {
+const setAll = () => {
+  let startNum = state.startNum+=1
   state.rednum = 0;
   state.bluenum = 0;
   let list = [];
@@ -434,7 +435,6 @@ const setAll = (startNum) => {
   });
   state.red = ared;
   state.blue = bblue;
-  state.startNum+=1
 };
 const countAndSortDuplicates = (arr) => {
   // 使用一个对象来存储数字出现的次数
@@ -471,9 +471,9 @@ const reload = () => {
 .header {
   // width:30%;
   display: flex;
-  flex-wrap:wrap;
+  flex-wrap: wrap;
   // flex-direction:column;
-  justify-content:center;
+  justify-content: center;
 }
 .head {
   display: flex;
@@ -510,13 +510,13 @@ const reload = () => {
   border-right: 2px solid #000000 !important;
 }
 .red {
-  width:calc(50% - 10px);
+  width: calc(50% - 10px);
   border: 1px solid #000000;
   // background-color: rgb(247, 145, 145);
   // color: #000000;
 }
 .blue {
-  width:calc(50% - 10px);
+  width: calc(50% - 10px);
   border: 1px solid #000000;
   // background-color: rgb(82, 125, 244);
   // color: #000000;
@@ -539,16 +539,16 @@ const reload = () => {
   // width: 20vw;
   border-bottom: 2px solid #e62727;
 }
-.redbacka{
-  background-color: rgba(0,0,0,0.3);
+.redbacka {
+  background-color: rgba(0, 0, 0, 0.3);
 }
 
 .allblue {
   // width: 20vw;
   border-bottom: 2px solid #273ae6;
 }
-.bluebacka{
-  background-color: rgba(0,0,0,0.3);
+.bluebacka {
+  background-color: rgba(0, 0, 0, 0.3);
 }
 .isred {
   // width: 20vw;
@@ -568,27 +568,27 @@ const reload = () => {
 .nums {
   display: flex;
   cursor: pointer;
-   flex-wrap:wrap;
+  flex-wrap: wrap;
 }
 .bars {
   width: 100%;
   height: 400px;
 }
-.el-card__body{
-padding:5px!import;
+.el-card__body {
+  padding: 5px!import;
 }
-.myLabel{
-  height:32px;
-  line-height:32px
+.myLabel {
+  height: 32px;
+  line-height: 32px;
 }
-.redspan{
+.redspan {
   display: inline-block;
-  width:calc(100% - 38px);
+  width: calc(100% - 38px);
   padding-left: 15px;
 }
-.bluespan{
+.bluespan {
   display: inline-block;
-  width:calc(100% - 38px);
+  width: calc(100% - 38px);
   padding-left: 15px;
 }
 </style>

@@ -38,13 +38,13 @@
           @click="random"
           style="margin-left: 20px; margin-bottom: 10px"
           type="primary"
-          >随机生成开奖结果</el-button
+          >随机生成开奖号码</el-button
         >
         <el-button
           @click="setAll"
           style="margin-left: 20px; margin-bottom: 10px"
           type="primary"
-          >全样本计算</el-button
+          >概率次数计算</el-button
         >
         <!-- <el-button
           @click="barList"
@@ -60,7 +60,7 @@
           >重置</el-button
         >
         <!-- @click="setUp(state.option, state.startNum)" -->
-        <div class="dataTime">期次：{{ state.time }}</div>
+        <div class="dataTime">当前期次：{{ state.time }}</div>
       </div>
       <div class="random">
         <span

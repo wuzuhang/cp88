@@ -44,7 +44,7 @@
           @click="setAll"
           style="margin-left: 20px; margin-bottom: 10px"
           type="primary"
-          >概率次数计算</el-button
+          >历史开奖号码分析</el-button
         >
         <!-- <el-button
           @click="barList"

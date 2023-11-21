@@ -35,6 +35,12 @@
           >单样本计算</el-button
         > -->
         <el-button
+          @click="random"
+          style="margin-left: 20px; margin-bottom: 10px"
+          type="primary"
+          >随机生成开奖结果</el-button
+        >
+        <el-button
           @click="setAll(state.startNum)"
           style="margin-left: 20px; margin-bottom: 10px"
           type="primary"
@@ -46,12 +52,7 @@
           type="primary"
           >柱状图</el-button
         > -->
-        <el-button
-          @click="random"
-          style="margin-left: 20px; margin-bottom: 10px"
-          type="primary"
-          >随机生成开奖结果</el-button
-        >
+
         <el-button
           @click="reload"
           style="margin-left: 20px; margin-bottom: 10px"
@@ -70,7 +71,10 @@
         <div
           v-for="(item, index) in state.red"
           class="allred"
-          :class="{ isred: state.redyes.includes(item.value) || item.clicked }"
+          :class="{
+            isred: state.redyes.includes(item.value) || item.clicked,
+            redbacka: item.background % 2 === 0,
+          }"
           @click="redclick(item)"
         >
           <span class="nonum">{{ index + 1 }}</span
@@ -83,13 +87,16 @@
         <div
           v-for="(item, index) in state.blue"
           class="allblue"
-          :class="{ isblue: item.value == state.blueyes || item.clicked }"
+          :class="{
+            isblue: item.value == state.blueyes || item.clicked,
+            bluebacka: item.background % 2 === 0,
+          }"
           @click="redclick(item)"
         >
           <span class="nonum">{{ index + 1 }}</span
           >&nbsp; <span>{{ item.value }}</span
           >&nbsp;
-          <span>{{ item.abs}} 次</span>
+          <span>{{ item.abs }} 次</span>
         </div>
       </div>
     </div>
@@ -388,10 +395,21 @@ const setAll = (startNum) => {
   });
   let ared = countAndSortDuplicates(redlist);
   let bblue = countAndSortDuplicates(bluelist);
+  let redbackground = ared[0].abs;
+  let bluebackground = bblue[0].abs;
+  let redcolor = 0;
+  let bluecolor = 0;
   ared.forEach((item, index) => {
     if (state.redyes.includes(item.value)) {
       state.rednum += 1;
       item.clicked = true;
+    }
+    if (item.abs === redbackground) {
+      item.background = redcolor + 1;
+    } else {
+      redbackground = item.abs;
+      redcolor += 1;
+      item.background = redcolor + 1;
     }
   });
   bblue.forEach((item, index) => {
@@ -399,9 +417,17 @@ const setAll = (startNum) => {
       state.bluenum += 1;
       item.clicked = true;
     }
+    if (item.abs === bluebackground) {
+      item.background = bluecolor + 1;
+    } else {
+      bluebackground = item.abs;
+      bluecolor += 1;
+      item.background = bluecolor + 1;
+    }
   });
   state.red = ared;
   state.blue = bblue;
+  console.log(ared, bblue);
 };
 const countAndSortDuplicates = (arr) => {
   // 使用一个对象来存储数字出现的次数
@@ -414,7 +440,12 @@ const countAndSortDuplicates = (arr) => {
 
   // 将结果转换为数组，其中每个元素是包含数字和出现次数的对象
   var countArray = Object.keys(countMap).map(function (key) {
-    return { value: parseInt(key), abs: countMap[key], clicked: false };
+    return {
+      value: parseInt(key),
+      abs: countMap[key],
+      clicked: false,
+      background: 0,
+    };
   });
 
   // 根据出现次数进行排序
@@ -499,9 +530,16 @@ const reload = () => {
   // width: 20vw;
   border-bottom: 2px solid #e62727;
 }
+.redbacka{
+  background-color: rgba(0,0,0,0.3);
+}
+
 .allblue {
   // width: 20vw;
   border-bottom: 2px solid #273ae6;
+}
+.bluebacka{
+  background-color: rgba(0,0,0,0.3);
 }
 .isred {
   // width: 20vw;

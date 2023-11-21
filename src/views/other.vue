@@ -102,7 +102,7 @@
             :class="{
               isblue: item.value == state.blueyes || item.clicked,
             }"
-            >{{ item.value }}{{ item.abs }} 次</span
+            >{{ item.value }}&nbsp;&nbsp;&nbsp;&nbsp;{{ item.abs }} 次</span
           >
         </div>
       </div>
@@ -434,7 +434,7 @@ const setAll = (startNum) => {
   });
   state.red = ared;
   state.blue = bblue;
-  console.log(ared, bblue);
+  state.option+=1
 };
 const countAndSortDuplicates = (arr) => {
   // 使用一个对象来存储数字出现的次数

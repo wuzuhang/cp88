@@ -560,7 +560,7 @@ const reload = () => {
 }
 .nonum {
   display: inline-block;
-  width: 20px;
+  width: 22px;
   text-align: center;
   border-right: 1px solid #000000;
   // background-color: #b5b4b4;
@@ -583,12 +583,12 @@ padding:5px!import;
 }
 .redspan{
   display: inline-block;
-  width:calc(100% - 36px);
+  width:calc(100% - 38px);
   padding-left: 15px;
 }
 .bluespan{
   display: inline-block;
-  width:calc(100% - 36px);
+  width:calc(100% - 38px);
   padding-left: 15px;
 }
 </style>

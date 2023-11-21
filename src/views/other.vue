@@ -61,9 +61,17 @@
         >
         <!-- @click="setUp(state.option, state.startNum)" -->
         <div class="dataTime">期次：{{ state.time }}</div>
-        <div class="dataTime">
-          命中数量：{{ state.rednum }}-{{ state.bluenum }}
-        </div>
+      </div>
+      <div class="random">
+        <span
+          v-show="state.randomNumber.length > 0"
+          class="randomred"
+          v-for="(item, index) in state.randomNumber"
+          >{{ item }}</span
+        >
+        <span v-show="state.bluerandomNumber" class="randomblue">{{
+          state.bluerandomNumber
+        }}</span>
       </div>
     </template>
     <div class="nums">
@@ -140,6 +148,8 @@ const state = reactive({
   loading: false,
   rednum: 0,
   bluenum: 0,
+  randomNumber: [],
+  bluerandomNumber: "",
 });
 const redbar = ref(null);
 const bluebar = ref(null);
@@ -191,7 +201,8 @@ const setUp = (option, num) => {
   }
   let datalist = state.xlsxList.slice(num, option + num).reverse();
   // 1 101
-  state.time = datalist[0][1] + "------" + datalist[datalist.length - 1][1];
+  // state.time = datalist[0][1] + "------" + datalist[datalist.length - 1][1];
+  state.time = datalist[datalist.length - 1][1];
   datalist.forEach((item, index) => {
     const red = [
       parseFloat(item[2]),
@@ -350,7 +361,8 @@ const redclick = (a) => {
   a.clicked = !a.clicked;
 };
 const random = () => {
-  console.log(state.blue);
+  state.randomNumber = [];
+  state.bluerandomNumber = "";
   state.red.forEach((item) => {
     item.clicked = false;
   });
@@ -367,12 +379,19 @@ const random = () => {
 
     numbers.push(randomNumber);
     state.red[randomNumber - 1].clicked = true;
+    state.randomNumber.push(state.red[randomNumber - 1].value);
   }
+
   var bluerandomNumber = Math.floor(Math.random() * state.blue.length) + 1;
+  state.bluerandomNumber = state.blue[bluerandomNumber - 1].value;
   state.blue[bluerandomNumber - 1].clicked = true;
+  state.randomNumber.sort((a, b) => {
+    return a - b;
+  });
+  console.log(state.randomNumber, state.bluerandomNumber);
 };
 const setAll = () => {
-  let startNum = state.startNum+=1
+  let startNum = (state.startNum += 1);
   state.rednum = 0;
   state.bluenum = 0;
   let list = [];
@@ -401,8 +420,8 @@ const setAll = () => {
       }
     });
   });
-  let ared = countAndSortDuplicates(redlist);
-  let bblue = countAndSortDuplicates(bluelist);
+  let ared = countAndSortDuplicates(redlist, 33);
+  let bblue = countAndSortDuplicates(bluelist, 16);
   let redbackground = ared[0].abs;
   let bluebackground = bblue[0].abs;
   let redcolor = 0;
@@ -436,7 +455,7 @@ const setAll = () => {
   state.red = ared;
   state.blue = bblue;
 };
-const countAndSortDuplicates = (arr) => {
+const countAndSortDuplicates = (arr, numlength) => {
   // 使用一个对象来存储数字出现的次数
   var countMap = {};
 
@@ -454,6 +473,21 @@ const countAndSortDuplicates = (arr) => {
       background: 0,
     };
   });
+  let numlist = [];
+  let objectList = [];
+  countArray.forEach((item) => {
+    numlist[item.value] = true;
+  });
+  for (var i = 1; i <= numlength; i++) {
+    if (numlist[i] != true) {
+      countArray.push({
+        value: i,
+        abs: 0,
+        clicked: false,
+        background: 0,
+      });
+    }
+  }
 
   // 根据出现次数进行排序
   countArray.sort(function (a, b) {
@@ -505,6 +539,30 @@ const reload = () => {
   height: 32px;
   line-height: 32px;
   margin-left: 20px;
+}
+.random {
+  text-align: center;
+}
+.randomred {
+  display: inline-block;
+  background-color: rgb(250, 65, 65);
+  width: 7vw;
+  height: 7vw;
+  line-height: 7vw;
+  text-align: center;
+  border-radius: 50%;
+  margin-right: 5px;
+  color:#ffffff;
+}
+.randomblue {
+  display: inline-block;
+  background-color: rgb(52, 105, 248);
+  width: 7vw;
+  height: 7vw;
+  line-height: 7vw;
+  text-align: center;
+  border-radius: 50%;
+  color:#ffffff;
 }
 .right {
   border-right: 2px solid #000000 !important;

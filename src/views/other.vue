@@ -71,32 +71,39 @@
         <div
           v-for="(item, index) in state.red"
           class="allred"
-          :class="{
-            isred: state.redyes.includes(item.value) || item.clicked,
-            redbacka: item.background % 2 === 0,
-          }"
           @click="redclick(item)"
         >
-          <span class="nonum">{{ index + 1 }}</span
-          >&nbsp; <span>{{ item.value }}</span
-          >&nbsp;
-          <span>{{ item.abs }} 次</span>
+          <span
+            class="nonum"
+            :class="{ redbacka: item.background % 2 === 0 }"
+            >{{ index + 1 }}</span
+          >
+          <span
+            class="redspan"
+            :class="{
+              isred: state.redyes.includes(item.value) || item.clicked,
+            }"
+            >{{ item.value }}&nbsp;&nbsp;&nbsp;&nbsp;{{ item.abs }} 次</span
+          >
         </div>
       </div>
       <div class="blue">
         <div
           v-for="(item, index) in state.blue"
           class="allblue"
-          :class="{
-            isblue: item.value == state.blueyes || item.clicked,
-            bluebacka: item.background % 2 === 0,
-          }"
           @click="redclick(item)"
         >
-          <span class="nonum">{{ index + 1 }}</span
-          >&nbsp; <span>{{ item.value }}</span
-          >&nbsp;
-          <span>{{ item.abs }} 次</span>
+          <span
+            class="nonum"
+            :class="{ bluebacka: item.background % 2 === 0 }"
+            >{{ index + 1 }}</span
+          ><span
+            class="bluespan"
+            :class="{
+              isblue: item.value == state.blueyes || item.clicked,
+            }"
+            >{{ item.value }}{{ item.abs }} 次</span
+          >
         </div>
       </div>
     </div>
@@ -503,12 +510,14 @@ const reload = () => {
   border-right: 2px solid #000000 !important;
 }
 .red {
-  width:calc(50% - 10px)
+  width:calc(50% - 10px);
+  border: 1px solid #000000;
   // background-color: rgb(247, 145, 145);
   // color: #000000;
 }
 .blue {
-  width:calc(50% - 10px)
+  width:calc(50% - 10px);
+  border: 1px solid #000000;
   // background-color: rgb(82, 125, 244);
   // color: #000000;
 }
@@ -553,7 +562,8 @@ const reload = () => {
   display: inline-block;
   width: 20px;
   text-align: center;
-  background-color: #b5b4b4;
+  border-right: 1px solid #000000;
+  // background-color: #b5b4b4;
 }
 .nums {
   display: flex;
@@ -570,5 +580,15 @@ padding:5px!import;
 .myLabel{
   height:32px;
   line-height:32px
+}
+.redspan{
+  display: inline-block;
+  width:calc(100% - 36px);
+  padding-left: 15px;
+}
+.bluespan{
+  display: inline-block;
+  width:calc(100% - 36px);
+  padding-left: 15px;
 }
 </style>

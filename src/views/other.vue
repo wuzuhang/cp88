@@ -434,7 +434,7 @@ const setAll = (startNum) => {
   });
   state.red = ared;
   state.blue = bblue;
-  state.option+=1
+  state.startNum+=1
 };
 const countAndSortDuplicates = (arr) => {
   // 使用一个对象来存储数字出现的次数

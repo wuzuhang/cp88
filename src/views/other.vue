@@ -5,7 +5,7 @@
         <!-- <el-upload class="upload-demo" :http-request="readxls" style="margin-bottom:10px">
           <el-button type="primary">Click to upload</el-button>
         </el-upload> -->
-        <div>
+        <!-- <div>
           <label class="myLabel">样本数量：</label>
           <el-select
             style="margin-left: 20px; margin-bottom: 10px"
@@ -19,7 +19,7 @@
               :value="item"
             />
           </el-select>
-        </div>
+        </div> -->
         <div>
           <label class="myLabel">最近期次开奖结果：</label>
           <el-input-number
@@ -28,18 +28,24 @@
           />
         </div>
 
-        <el-button
+        <!-- <el-button
           @click="setUp(state.option, state.startNum)"
           style="margin-left: 20px; margin-bottom: 10px"
           type="primary"
-          >计算</el-button
-        >
+          >单样本计算</el-button
+        > -->
         <el-button
+          @click="setAll(state.startNum)"
+          style="margin-left: 20px; margin-bottom: 10px"
+          type="primary"
+          >全样本计算</el-button
+        >
+        <!-- <el-button
           @click="barList"
           style="margin-left: 20px; margin-bottom: 10px"
           type="primary"
           >柱状图</el-button
-        >
+        > -->
         <el-button
           @click="random"
           style="margin-left: 20px; margin-bottom: 10px"
@@ -54,7 +60,9 @@
         >
         <!-- @click="setUp(state.option, state.startNum)" -->
         <div class="dataTime">期次：{{ state.time }}</div>
-        <div class="dataTime">百分百总和：{{ state.allred }}</div>
+        <div class="dataTime">
+          命中数量：{{ state.rednum }}-{{ state.bluenum }}
+        </div>
       </div>
     </template>
     <div class="nums">
@@ -68,7 +76,7 @@
           <span class="nonum">{{ index + 1 }}</span
           >&nbsp; <span>{{ item.value }}</span
           >&nbsp;
-          <span>{{ item.abs.toFixed(5) }}%</span>
+          <span>{{ item.abs }} 次</span>
         </div>
       </div>
       <div class="blue">
@@ -81,7 +89,7 @@
           <span class="nonum">{{ index + 1 }}</span
           >&nbsp; <span>{{ item.value }}</span
           >&nbsp;
-          <span>{{ item.abs.toFixed(5) }}%</span>
+          <span>{{ item.abs}} 次</span>
         </div>
       </div>
     </div>
@@ -116,6 +124,8 @@ const state = reactive({
   bluebar: [],
   allred: 0,
   loading: false,
+  rednum: 0,
+  bluenum: 0,
 });
 const redbar = ref(null);
 const bluebar = ref(null);
@@ -132,7 +142,7 @@ const init = () => {
       datalist.push(ddlist);
     });
     state.xlsxList = datalist;
-    setUp(state.option, state.startNum);
+    setAll(state.startNum);
     state.loading = false;
   });
 };
@@ -326,23 +336,93 @@ const redclick = (a) => {
   a.clicked = !a.clicked;
 };
 const random = () => {
+  console.log(state.blue);
   state.red.forEach((item) => {
     item.clicked = false;
   });
-  state.blue[0].clicked = false;
+  state.blue.forEach((item) => {
+    item.clicked = false;
+  });
   var numbers = [];
   for (var i = 0; i < 6; i++) {
     var randomNumber;
 
     do {
-      randomNumber = Math.floor(Math.random() * 33) + 1;
+      randomNumber = Math.floor(Math.random() * state.red.length) + 1;
     } while (numbers.includes(randomNumber));
 
     numbers.push(randomNumber);
     state.red[randomNumber - 1].clicked = true;
   }
-  var bluerandomNumber = Math.floor(Math.random() * 16) + 1;
+  var bluerandomNumber = Math.floor(Math.random() * state.blue.length) + 1;
   state.blue[bluerandomNumber - 1].clicked = true;
+};
+const setAll = (startNum) => {
+  state.rednum = 0;
+  state.bluenum = 0;
+  let list = [];
+  let redlist = [];
+  let bluelist = [];
+  for (var i = 0; i < state.options.length; i++) {
+    list.push(setUp(state.options[i], startNum));
+  }
+  list.forEach((item, index) => {
+    let redabs = item.red[5].abs;
+    let blueabs = item.blue[0].abs;
+    item.red.forEach((reditem, redindex) => {
+      if (redindex < 6) {
+        redlist.push(reditem.value);
+      }
+      if (redindex >= 6 && reditem.abs === redabs) {
+        redlist.push(reditem.value);
+      }
+    });
+    item.blue.forEach((blueitem, blueindex) => {
+      if (blueindex == 0) {
+        bluelist.push(blueitem.value);
+      }
+      if (blueindex > 0 && blueitem.abs == blueabs) {
+        bluelist.push(blueitem.value);
+      }
+    });
+  });
+  let ared = countAndSortDuplicates(redlist);
+  let bblue = countAndSortDuplicates(bluelist);
+  ared.forEach((item, index) => {
+    if (state.redyes.includes(item.value)) {
+      state.rednum += 1;
+      item.clicked = true;
+    }
+  });
+  bblue.forEach((item, index) => {
+    if (state.blueyes == item.value) {
+      state.bluenum += 1;
+      item.clicked = true;
+    }
+  });
+  state.red = ared;
+  state.blue = bblue;
+};
+const countAndSortDuplicates = (arr) => {
+  // 使用一个对象来存储数字出现的次数
+  var countMap = {};
+
+  // 遍历数组，统计每个数字的出现次数
+  arr.forEach(function (num) {
+    countMap[num] = (countMap[num] || 0) + 1;
+  });
+
+  // 将结果转换为数组，其中每个元素是包含数字和出现次数的对象
+  var countArray = Object.keys(countMap).map(function (key) {
+    return { value: parseInt(key), abs: countMap[key], clicked: false };
+  });
+
+  // 根据出现次数进行排序
+  countArray.sort(function (a, b) {
+    return b.abs - a.abs;
+  });
+
+  return countArray;
 };
 const reload = () => {
   location.reload();

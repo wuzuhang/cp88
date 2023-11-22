@@ -1,6 +1,6 @@
 <template>
   <div class="footer">
-    <div class="left">https://wuzuhang.cn</div>
+    <div class="left">cn</div>
     <div class="right">
       
     </div>

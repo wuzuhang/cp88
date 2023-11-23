@@ -251,7 +251,7 @@ const getrednum = (redlist, hitlist) => {
     bluelist.slice(state.startnum, (16 + state.startnum) * num)
   );
   state.resultblue = resultblue;
-  
+
   state.allredlist = countOccurrences(allredlist);
   let class0 = Array.from(new Set(state.class0));
   class0.sort((a, b) => a - b);
@@ -399,7 +399,7 @@ const numclick = (a) => {
       }
       .redNo {
         background-color: rgb(255, 127, 127);
-        font-weight: bold;
+        // font-weight: bold;
         color: #333333;
         border: 1px solid #333333;
         .red {

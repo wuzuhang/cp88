@@ -297,24 +297,24 @@ const numclick = (a) => {
     .sample {
       .redhit {
         display: inline-block;
-        width: 24px;
-        height: 24px;
+        width: 26px;
+        height: 26px;
         background-color: rgb(245, 56, 56);
         color: #ffffff;
         border-radius: 50%;
         margin-right: 5px;
         text-align: center;
-        line-height: 24px;
+        line-height: 26px;
       }
       .bluehit {
         display: inline-block;
-        width: 24px;
-        height: 24px;
+        width: 26px;
+        height: 26px;
         background-color: rgb(73, 79, 249);
         color: #ffffff;
         border-radius: 50%;
         text-align: center;
-        line-height: 24px;
+        line-height: 26px;
       }
     }
   }
@@ -382,12 +382,14 @@ const numclick = (a) => {
         background-color: rgb(245, 56, 56);
         color: #ffffff;
         font-weight: bold;
+        border-radius: 50%;
       }
       .hitblue {
         width: 60%;
         background-color: rgb(73, 79, 249);
         color: #ffffff;
         font-weight: bold;
+        border-radius: 50%;
       }
     }
   }

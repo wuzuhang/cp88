@@ -87,7 +87,7 @@ router.beforeEach((to, from, next) => {
 }
 .main {
   overflow: auto;
-  padding: 10px;
+  padding: 0 2vw;
 }
 </style>
 

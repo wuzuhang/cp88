@@ -10,12 +10,11 @@
         />
         &nbsp;&nbsp;<span>下一期</span>
       </div>
-      <div class="marginbtn sample" v-show="state.time">
+      <!-- <div class="marginbtn sample" v-show="state.time">
         {{ state.time }}:
         <span class="redhit" v-for="item in state.redhitd">{{ item }}</span>
         <span class="bluehit">{{ state.bluehitd }}</span>
-      </div>
-
+      </div> -->
       <el-button type="primary" class="marginbtn" @click="sampleInit"
         >随机生成开奖号码</el-button
       >
@@ -39,11 +38,17 @@
       </div>
       <div class="cow">
         <div class="cow-red redNo">
-          <div class="red" v-for="(item, index) in 33">
-            {{ item }}
+          <div
+            class="red"
+            v-for="(item, index) in 33"
+            :class="{ redNohit: setnum(state.allredlist, state.redhitd, item).hit }"
+          >
+            {{ item }}-<span style="color: #dddddd"
+              >{{ setnum(state.allredlist, state.redhitd, item).num }}
+            </span>
           </div>
         </div>
-        <div class="cow-red" v-for="(item, index) in state.result">
+        <div class="cow-red rednum" v-for="(item, index) in state.result">
           <div
             class="setred"
             :class="{
@@ -56,12 +61,10 @@
             v-for="(items, indexs) in item"
             @click="numclick(items)"
           >
-            <span :class="{ hitred: items.hit }"
-              >{{ items.rednum }}</span
-            >
+            <span :class="{ hitred: items.hit }">{{ items.rednum }}</span>
           </div>
         </div>
-        <div class="cow-red">
+        <div class="cow-red rednum">
           <div
             class="setred"
             v-for="(items, indexs) in state.resultblue"
@@ -74,18 +77,27 @@
             }"
             @click="numclick(items)"
           >
-            <span :class="{ hitred: items.hit }"
-              >{{ items.bluenum }}</span
-            >
+            <span :class="{ hitblue: items.hit }">{{ items.bluenum }}</span>
           </div>
         </div>
+        <!-- <div class="cow-red blueNo">
+          <div
+            class="blue"
+            v-for="(item, index) in 16"
+            :class="{ blueNohit: setnum(item).hit }"
+          >
+            {{ item }}-<span style="color: #dddddd"
+              >{{ setnum(item).num }}
+            </span>
+          </div>
+        </div> -->
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { reactive, ref, onMounted } from "vue";
+import { reactive, ref, onMounted, computed } from "vue";
 import axios from "@/utils/axios";
 const state = reactive({
   startnum: 0,
@@ -101,9 +113,28 @@ const state = reactive({
   time: "",
   redhitd: [],
   bluehitd: "",
+  allredlist: [],
 });
 onMounted(() => {
   init();
+});
+const setnum = computed(() => (allredlist, redhitd, data) => {
+  let obj = { num: 0, hit: false };
+  if (Array.isArray(allredlist) && allredlist.length > 0) {
+    allredlist.forEach((item) => {
+      if (item.rednum == data) {
+        obj.num = item.order;
+      }
+    });
+  }
+  if (Array.isArray(redhitd) && redhitd.length > 0) {
+    redhitd.forEach((item) => {
+      if (item == data) {
+        obj.hit = true;
+      }
+    });
+  }
+  return obj;
 });
 const init = () => {
   state.loading = true;
@@ -150,6 +181,7 @@ const sampleInit = () => {
   state.redlistSort = JSON.parse(JSON.stringify(state.redlist)).sort(
     (a, b) => a - b
   );
+  state.redhitd = state.redlistSort
   state.result.forEach((item, index) => {
     item.forEach((items) => {
       items.hit = false;
@@ -185,6 +217,7 @@ const setred = () => {
 };
 
 const getrednum = (redlist, hitlist) => {
+  let allredlist = [];
   let red1 = [];
   let red2 = [];
   let red3 = [];
@@ -192,6 +225,7 @@ const getrednum = (redlist, hitlist) => {
   let red5 = [];
   let red6 = [];
   redlist.forEach((item) => {
+    allredlist = allredlist.concat(item);
     red1.push(parseInt(item[0]));
     red2.push(parseInt(item[1]));
     red3.push(parseInt(item[2]));
@@ -217,6 +251,8 @@ const getrednum = (redlist, hitlist) => {
     bluelist.slice(state.startnum, (16 + state.startnum) * num)
   );
   state.resultblue = resultblue;
+  
+  state.allredlist = countOccurrences(allredlist);
   let class0 = Array.from(new Set(state.class0));
   class0.sort((a, b) => a - b);
 };
@@ -285,8 +321,10 @@ const numclick = (a) => {
 </script>
 
 <style lang="less" scoped>
+* {
+  box-sizing: border-box;
+}
 .list {
-  // padding: 2vw;
   .header {
     display: flex;
     flex-direction: column;
@@ -316,17 +354,28 @@ const numclick = (a) => {
         text-align: center;
         line-height: 26px;
       }
+      .rednum {
+        display: inline-block;
+        width: 26px;
+        height: 26px;
+        color: #333333;
+        margin-right: 5px;
+        text-align: center;
+        line-height: 26px;
+      }
     }
   }
   .border {
     .row {
       display: flex;
-      justify-content: space-around;
+      justify-content: center;
       font-weight: bold;
       color: #333333;
       .red {
         text-align: center;
-        width: 100%;
+        width: 12vw;
+        height: 6vw;
+        line-height: 6vw;
         background-color: rgb(255, 127, 127);
         border: 1px solid #333333;
       }
@@ -339,27 +388,53 @@ const numclick = (a) => {
     }
     .cow {
       display: flex;
-      justify-content: space-around;
+      justify-content: center;
+      .cow-red {
+        .red {
+          text-align: center;
+          width: 12vw;
+          height: 6vw;
+          line-height: 6vw;
+        }
+      }
       .redNo {
-        border: 1px solid #333333;
         background-color: rgb(255, 127, 127);
         font-weight: bold;
         color: #333333;
-        max-width: 12vw;
-      }
-      .cow-red {
-        width: 100%;
+        border: 1px solid #333333;
         .red {
+          width: 12vw;
+          height: 6vw;
+          line-height: 6vw;
           border-bottom: 1px solid #333333;
-          text-align: center;
+        }
+        .redNohit {
+          background-color: rgb(245, 56, 56);
+        }
+      }
+      .blueNo {
+        background-color: rgb(127, 131, 255);
+        font-weight: bold;
+        color: #333333;
+        border: 1px solid #333333;
+        .blue {
+          width: 12vw;
+          height: 6vw;
+          line-height: 6vw;
+          border-bottom: 1px solid #333333;
+        }
+        .blueNohit {
+          background-color: rgb(73, 79, 249);
         }
       }
       .setred {
         text-align: center;
+        width: 12vw;
+        height: 6vw;
+        line-height: 6vw;
         span {
           display: inline-block;
         }
-        // background-color: aquamarine;
       }
       .class0 {
         background-color: rgba(0, 0, 0, 0.6);
@@ -378,14 +453,14 @@ const numclick = (a) => {
       }
 
       .hitred {
-        width: 60%;
+        width: 50%;
         background-color: rgb(245, 56, 56);
         color: #ffffff;
         font-weight: bold;
         border-radius: 50%;
       }
       .hitblue {
-        width: 60%;
+        width: 50%;
         background-color: rgb(73, 79, 249);
         color: #ffffff;
         font-weight: bold;

@@ -10,6 +10,7 @@
         />
         &nbsp;&nbsp;<span>下一期</span>
       </div>
+      <div>{{ frequency / 2 }}</div>
       <!-- <div class="marginbtn sample" v-show="state.time">
         {{ state.time }}:
         <span class="redhit" v-for="item in state.redhitd">{{ item }}</span>
@@ -41,7 +42,9 @@
           <div
             class="red"
             v-for="(item, index) in 33"
-            :class="{ redNohit: setnum(state.allredlist, state.redhitd, item).hit }"
+            :class="{
+              redNohit: setnum(state.allredlist, state.redhitd, item).hit,
+            }"
           >
             {{ item }}-<span style="color: #dddddd"
               >{{ setnum(state.allredlist, state.redhitd, item).num }}
@@ -114,10 +117,21 @@ const state = reactive({
   redhitd: [],
   bluehitd: "",
   allredlist: [],
+  frequency: 0,
 });
 onMounted(() => {
   init();
 });
+const setfrequency = ()=>{
+   if (Array.isArray(allredlist) && allredlist.length > 0) {
+    allredlist.forEach((item) => {
+      if (item.rednum == data) {
+        obj.num = item.order;
+      }
+    });
+  }
+
+}
 const setnum = computed(() => (allredlist, redhitd, data) => {
   let obj = { num: 0, hit: false };
   if (Array.isArray(allredlist) && allredlist.length > 0) {
@@ -181,7 +195,7 @@ const sampleInit = () => {
   state.redlistSort = JSON.parse(JSON.stringify(state.redlist)).sort(
     (a, b) => a - b
   );
-  state.redhitd = state.redlistSort
+  state.redhitd = state.redlistSort;
   state.result.forEach((item, index) => {
     item.forEach((items) => {
       items.hit = false;
@@ -307,6 +321,7 @@ function countOccurrencesblue(arr) {
   return list;
 }
 const handleChange = (num) => {
+  frequency = 0;
   if (num == 0) {
     state.time = "";
   } else {
@@ -323,6 +338,7 @@ const numclick = (a) => {
 <style lang="less" scoped>
 * {
   box-sizing: border-box;
+  font-size: 14px;
 }
 .list {
   .header {

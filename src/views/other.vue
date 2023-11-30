@@ -10,7 +10,7 @@
         />
         &nbsp;&nbsp;<span>下一期</span>
       </div>
-      <div>{{ frequency / 2 }}</div>
+      <!-- <div>{{ frequency / 2 }}</div> -->
       <!-- <div class="marginbtn sample" v-show="state.time">
         {{ state.time }}:
         <span class="redhit" v-for="item in state.redhitd">{{ item }}</span>
@@ -116,8 +116,7 @@ const state = reactive({
   time: "",
   redhitd: [],
   bluehitd: "",
-  allredlist: [],
-  frequency: 0,
+  allredlist: []
 });
 onMounted(() => {
   init();
@@ -199,7 +198,10 @@ const sampleInit = () => {
   state.result.forEach((item, index) => {
     item.forEach((items) => {
       items.hit = false;
-      if (items.rednum == state.redlist[index]) {
+      // if (items.rednum == state.redlist[index]) {
+      //   items.hit = true;
+      // }
+      if (state.redlist.includes(items.rednum)) {
         items.hit = true;
       }
     });
@@ -248,12 +250,12 @@ const getrednum = (redlist, hitlist) => {
     red6.push(parseInt(item[5]));
   });
   state.result = [];
-  let result1 = countOccurrences(red1, hitlist[0]);
-  let result2 = countOccurrences(red2, hitlist[1]);
-  let result3 = countOccurrences(red3, hitlist[2]);
-  let result4 = countOccurrences(red4, hitlist[3]);
-  let result5 = countOccurrences(red5, hitlist[4]);
-  let result6 = countOccurrences(red6, hitlist[5]);
+  let result1 = countOccurrences(red1, hitlist);
+  let result2 = countOccurrences(red2, hitlist);
+  let result3 = countOccurrences(red3, hitlist);
+  let result4 = countOccurrences(red4, hitlist);
+  let result5 = countOccurrences(red5, hitlist);
+  let result6 = countOccurrences(red6, hitlist);
   state.result = [result1, result2, result3, result4, result5, result6];
 
   let bluelist = [];
@@ -272,6 +274,11 @@ const getrednum = (redlist, hitlist) => {
 };
 
 function countOccurrences(arr, hitlist) {
+  // console.log(hitlist.length)
+  let hit_list = []
+  if(Array.isArray(hitlist)&&hitlist.length>0){
+     hit_list = hitlist
+  }
   state.numlist = [];
   for (var i = 0; i < 33; i++) {
     state.numlist.push(0);
@@ -284,7 +291,7 @@ function countOccurrences(arr, hitlist) {
     list.push({
       rednum: index + 1,
       order: item,
-      hit: hitlist == index + 1,
+      hit: hit_list.length>0?hit_list.includes((index + 1)):false,
       color: 0,
     });
     if (item == 0) {
@@ -321,7 +328,6 @@ function countOccurrencesblue(arr) {
   return list;
 }
 const handleChange = (num) => {
-  frequency = 0;
   if (num == 0) {
     state.time = "";
   } else {

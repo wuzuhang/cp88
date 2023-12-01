@@ -198,12 +198,12 @@ const sampleInit = () => {
   state.result.forEach((item, index) => {
     item.forEach((items) => {
       items.hit = false;
-      // if (items.rednum == state.redlist[index]) {
-      //   items.hit = true;
-      // }
-      if (state.redlist.includes(items.rednum)) {
+      if (items.rednum == state.redlist[index]) {
         items.hit = true;
       }
+      // if (state.redlist.includes(items.rednum)) {
+      //   items.hit = true;
+      // }
     });
   });
   state.resultblue.forEach((item) => {
@@ -250,12 +250,12 @@ const getrednum = (redlist, hitlist) => {
     red6.push(parseInt(item[5]));
   });
   state.result = [];
-  let result1 = countOccurrences(red1, hitlist);
-  let result2 = countOccurrences(red2, hitlist);
-  let result3 = countOccurrences(red3, hitlist);
-  let result4 = countOccurrences(red4, hitlist);
-  let result5 = countOccurrences(red5, hitlist);
-  let result6 = countOccurrences(red6, hitlist);
+  let result1 = countOccurrences(red1, hitlist[0]);
+  let result2 = countOccurrences(red2, hitlist[1]);
+  let result3 = countOccurrences(red3, hitlist[2]);
+  let result4 = countOccurrences(red4, hitlist[3]);
+  let result5 = countOccurrences(red5, hitlist[4]);
+  let result6 = countOccurrences(red6, hitlist[5]);
   state.result = [result1, result2, result3, result4, result5, result6];
 
   let bluelist = [];
@@ -275,10 +275,10 @@ const getrednum = (redlist, hitlist) => {
 
 function countOccurrences(arr, hitlist) {
   // console.log(hitlist.length)
-  let hit_list = []
-  if(Array.isArray(hitlist)&&hitlist.length>0){
-     hit_list = hitlist
-  }
+  // let hit_list = []
+  // if(Array.isArray(hitlist)&&hitlist.length>0){
+  //    hit_list = hitlist
+  // }
   state.numlist = [];
   for (var i = 0; i < 33; i++) {
     state.numlist.push(0);
@@ -291,7 +291,7 @@ function countOccurrences(arr, hitlist) {
     list.push({
       rednum: index + 1,
       order: item,
-      hit: hit_list.length>0?hit_list.includes((index + 1)):false,
+      hit: hitlist == index + 1,
       color: 0,
     });
     if (item == 0) {

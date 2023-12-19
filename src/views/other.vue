@@ -45,6 +45,7 @@
             :class="{
               redNohit: setnum(state.allredlist, state.redhitd, item).hit,
             }"
+            @click="cowClick(item)"
           >
             {{ item }}-<span style="color: #dddddd"
               >{{ setnum(state.allredlist, state.redhitd, item).num }}
@@ -339,6 +340,14 @@ const handleChange = (num) => {
 const numclick = (a) => {
   a.hit = !a.hit;
 };
+const cowClick = (a)=>{
+  if(state.redhitd.indexOf(a)==-1){
+    state.redhitd.push(a)
+  }else{
+    state.redhitd.splice(state.redhitd.indexOf(a),1);
+  }
+
+}
 </script>
 
 <style lang="less" scoped>

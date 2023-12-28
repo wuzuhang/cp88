@@ -20,7 +20,7 @@ const router = createRouter({
     {
       path: '/other',
       name: 'other',
-      component: () => import(/* webpackChunkName: "other" */ '../views/other.vue')
+      component: () => import(/* webpackChunkName: "other" */ '../views/yilou.vue')
     },
     // {
     //   path: '/login',

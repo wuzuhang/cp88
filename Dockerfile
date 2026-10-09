@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM node:22-alpine AS frontend-builder
+FROM docker.m.daocloud.io/library/node:22-alpine AS frontend-builder
 WORKDIR /src/cfront
 ARG NPM_REGISTRY=https://registry.npmjs.org
 COPY cfront/package.json cfront/package-lock.json ./

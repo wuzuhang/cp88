@@ -1,0 +1,12 @@
+source_url: http://data.17500.cn/ssq_asc.txt
+fucai3d_source_url: http://data.17500.cn/3d_asc.txt
+server:
+  port: 8080
+  mode: debug # debug 或 release
+
+database:
+  enabled: true
+  auto_migrate: true
+  driver: mysql
+  # dsn: root:123456@tcp(172.17.0.1:3306)/cp88?charset=utf8mb4&parseTime=True&loc=Local
+  dsn: root:123456@tcp(10.147.17.1:3306)/cp88?charset=utf8mb4&parseTime=True&loc=Local

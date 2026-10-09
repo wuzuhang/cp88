@@ -1,0 +1,11 @@
+# 镜像默认配置；Compose 使用根目录 config.yaml 只读覆盖。
+source_url: http://data.17500.cn/ssq_asc.txt
+fucai3d_source_url: http://data.17500.cn/3d_asc.txt
+server:
+  port: 8080
+  mode: release
+database:
+  enabled: true
+  driver: mysql
+  dsn: ""
+  auto_migrate: false

@@ -1,0 +1,20 @@
+CREATE TABLE `fucai3d_records` (
+  `issue` varchar(20) NOT NULL COMMENT '开奖期号',
+  `draw_date` date NOT NULL COMMENT '开奖日期',
+  `num_1` tinyint NOT NULL COMMENT '开奖号-百位',
+  `num_2` tinyint NOT NULL COMMENT '开奖号-十位',
+  `num_3` tinyint NOT NULL COMMENT '开奖号-个位',
+  `test_num_1` tinyint NOT NULL COMMENT '试机号-百位',
+  `test_num_2` tinyint NOT NULL COMMENT '试机号-十位',
+  `test_num_3` tinyint NOT NULL COMMENT '试机号-个位',
+  `machine` tinyint NOT NULL COMMENT '机型',
+  `ball_set` tinyint NOT NULL COMMENT '球号',
+  `total_sales` bigint NOT NULL DEFAULT '0' COMMENT '投注总额',
+  `direct_count` int NOT NULL DEFAULT '0' COMMENT '单选注数',
+  `direct_amount` bigint NOT NULL DEFAULT '0' COMMENT '单选单注金额/总额',
+  `group3_count` int NOT NULL DEFAULT '0' COMMENT '组三注数',
+  `group3_amount` bigint NOT NULL DEFAULT '0' COMMENT '组三单注金额/总额',
+  `group6_count` int NOT NULL DEFAULT '0' COMMENT '组六注数',
+  `group6_amount` bigint NOT NULL DEFAULT '0' COMMENT '组六单注金额/总额',
+  PRIMARY KEY (`issue`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='福彩3D开奖明细表';

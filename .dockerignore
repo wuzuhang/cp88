@@ -1,0 +1,12 @@
+.git
+.cache
+bin
+*.exe
+.env*
+config.local.yaml
+cfront/node_modules
+cfront/dist
+.history
+config.yaml
+.vscode
+.idea

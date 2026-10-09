@@ -1,0 +1,14 @@
+services:
+  shuangseqiu:
+    container_name: shuangseqiu
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8888:80"
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+    environment:
+      TZ: Asia/Shanghai
+    stop_grace_period: 150s

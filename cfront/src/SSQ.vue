@@ -2,7 +2,8 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { ArrowDown, ArrowUpRight, BarChart3, Check, ChevronDown, ChevronLeft, ChevronRight, CircleHelp, Clock3, Grid2X2, History, LoaderCircle, RefreshCw, RotateCcw, Shuffle, Sparkles, WifiOff } from 'lucide-vue-next'
 import { analyzeBalls, fetchRecords, request } from './lib/api.js'
-import { ball, buildMatrix, frequencyLevel, randomCombination, redBalls, sequenceBalls } from './lib/analysis.js'
+import { ball, buildMatrix, frequencyLevel, positionFrequencyTotal, randomCombination, redBalls, sampleBeforeTarget, sequenceBalls } from './lib/analysis.js'
+import WinningFrequency from './components/WinningFrequency.vue'
 
 const records = ref([])
 const total = ref(0)
@@ -28,10 +29,13 @@ const columns = computed(() => matrix.value.columns.map(list => sortOrder.value 
 const blueColumn = computed(() => sortOrder.value === 'asc' ? matrix.value.blue : [...matrix.value.blue].sort((a,b) => b.count-a.count || a.number-b.number))
 const chosenReds = computed(() => selected.value.filter(n => n !== null).sort((a,b) => a-b))
 const complete = computed(() => chosenReds.value.length === 6 && blue.value !== null)
-const targetRecord = computed(() => offset.value > 0 ? records.value[offset.value-1] : records.value[0])
-const maxOffset = computed(() => Math.max(0,records.value.length-Math.max(redWindow.value,blueWindow.value)))
+const targetRecord = computed(() => records.value[offset.value])
+const winningNumbers = computed(() => targetRecord.value ? [...sequenceBalls(targetRecord.value),targetRecord.value.blue] : [])
+const winningFrequency = computed(() => positionFrequencyTotal([...matrix.value.columns,matrix.value.blue],winningNumbers.value))
+const winningOmissions = computed(() => winningNumbers.value.map((number,p)=>p<6?matrix.value.omissions[p][number-1]:matrix.value.blueOmissions[number-1]))
+const maxOffset = computed(() => Math.max(0,records.value.length-Math.max(redWindow.value,blueWindow.value)-1))
 const sampleLabel = computed(() => {
-  const items=records.value.slice(offset.value,offset.value+redWindow.value)
+  const items=sampleBeforeTarget(records.value,offset.value,redWindow.value)
   return items.length ? `${items.at(-1).issue} — ${items[0].issue}` : '等待历史数据'
 })
 const filteredHistory = computed(() => records.value.filter(r => `${r.issue} ${r.draw_date}`.includes(search.value.trim())))
@@ -84,16 +88,16 @@ function reset() { selected.value=Array(6).fill(null); blue.value=null; analysis
 
 function setOffset(value) {
   offset.value=Math.min(maxOffset.value,Math.max(0,value))
-  if(offset.value===0) { reset(); return }
-  const record=records.value[offset.value-1]
+  const record=records.value[offset.value]
+  if(!record) { reset(); return }
   selected.value=sequenceBalls(record)
   blue.value=record.blue
 }
 
 function useHistory(record) {
   const index=records.value.findIndex(r=>r.issue===record.issue)
-  if(index+1<=maxOffset.value) {
-    setOffset(index+1)
+  if(index<=maxOffset.value) {
+    setOffset(index)
     notify(`已对照 ${record.issue} 期，样本仅使用更早的开奖`)
     tab.value='matrix'
   } else {
@@ -167,6 +171,7 @@ onBeforeUnmount(()=>clearTimeout(noticeTimer))
             <div class="issue-line"><h2>第 {{ targetRecord.issue }} 期</h2><span class="subtle-tag">{{ offset ? '仅用此前样本' : '双色球' }}</span></div>
             <div class="draw-balls"><span v-for="n in redBalls(targetRecord)" :key="n" class="draw-ball red">{{ ball(n) }}</span><span class="ball-divider"></span><span class="draw-ball blue">{{ ball(targetRecord.blue) }}</span></div>
             <div class="draw-sequence"><span>出球顺序</span><span>{{ sequenceBalls(targetRecord).map(ball).join(' · ') }}</span></div>
+            <WinningFrequency :frequency="winningFrequency" :omissions="winningOmissions" :numbers="winningNumbers.map(ball)" :labels="['红1','红2','红3','红4','红5','红6','蓝球']" :sample-label="`红球 ${matrix.redCount} 期 / 蓝球 ${matrix.blueCount} 期 · 仅用此前样本`"/>
           </article>
           <article class="insight-card card">
             <div class="card-kicker"><span>样本中的高频号码</span><BarChart3 :size="17" /></div>

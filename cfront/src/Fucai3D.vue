@@ -2,7 +2,8 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { ArrowDown, ArrowUpRight, BarChart3, Check, ChevronLeft, ChevronRight, CircleHelp, History, LoaderCircle, RefreshCw, RotateCcw, Shuffle, Sparkles, Grid2X2, WifiOff } from 'lucide-vue-next'
 import { analyze3D, fetchRecords, request } from './lib/api.js'
-import { frequencyLevel } from './lib/analysis.js'
+import { frequencyLevel, positionFrequencyTotal, sampleBeforeTarget } from './lib/analysis.js'
+import WinningFrequency from './components/WinningFrequency.vue'
 import { build3DMatrix, digits3D, positions3D, random3D, trialDigits3D } from './lib/fucai3d.js'
 
 const records=ref([]),total=ref(0),loading=ref(true),loadError=ref('')
@@ -14,10 +15,13 @@ const matrix=computed(()=>build3DMatrix(records.value,offset.value,sampleWindow.
 const columns=computed(()=>matrix.value.columns.map(column=>sortOrder.value==='asc'?column:[...column].sort((a,b)=>b.count-a.count||a.number-b.number)))
 const complete=computed(()=>selected.value.every(n=>n!==null))
 const selectedCount=computed(()=>selected.value.filter(n=>n!==null).length)
-const maxOffset=computed(()=>Math.max(0,records.value.length-sampleWindow.value))
-const targetRecord=computed(()=>records.value[offset.value>0?offset.value-1:0])
+const maxOffset=computed(()=>Math.max(0,records.value.length-sampleWindow.value-1))
+const targetRecord=computed(()=>records.value[offset.value])
+const winningNumbers=computed(()=>targetRecord.value?digits3D(targetRecord.value):[])
+const winningFrequency=computed(()=>positionFrequencyTotal(matrix.value.columns,winningNumbers.value))
+const winningOmissions=computed(()=>winningNumbers.value.map((number,p)=>matrix.value.omissions[p][number]))
 const sampleLabel=computed(()=>{
-  const sample=records.value.slice(offset.value,offset.value+sampleWindow.value)
+  const sample=sampleBeforeTarget(records.value,offset.value,sampleWindow.value)
   return sample.length?`${sample.at(-1).issue} — ${sample[0].issue}`:'等待历史数据'
 })
 const history=computed(()=>records.value.filter(r=>`${r.issue} ${r.draw_date}`.includes(search.value.trim())))
@@ -32,12 +36,12 @@ function reset(){selected.value=[null,null,null];analysisError.value='';notice.v
 function randomize(){selected.value=random3D();notice.value='已生成一组随机号码'}
 function setOffset(value){
   offset.value=Math.min(maxOffset.value,Math.max(0,value))
-  if(offset.value===0){reset();return}
-  selected.value=digits3D(records.value[offset.value-1]);notice.value='仅使用对照期之前的样本'
+  if(!records.value[offset.value]){reset();return}
+  selected.value=digits3D(records.value[offset.value]);notice.value='仅使用对照期之前的样本'
 }
 function useHistory(record){
   const index=records.value.findIndex(r=>r.issue===record.issue)
-  if(index+1<=maxOffset.value){setOffset(index+1);tab.value='matrix'}
+  if(index<=maxOffset.value){setOffset(index);tab.value='matrix'}
   else{selected.value=digits3D(record);tab.value='picker';notice.value='已载入号码；更早的历史样本不足，未切换对照窗口'}
 }
 async function analyze(){
@@ -94,6 +98,7 @@ onMounted(load)
             <div class="issue-line"><h2>第 {{targetRecord.issue}} 期</h2><span class="subtle-tag">{{offset?'仅用此前样本':'福彩 3D'}}</span></div>
             <div class="three-draw"><div v-for="(digit,p) in digits3D(targetRecord)" :key="p"><span class="draw-ball red">{{digit}}</span><small>{{positions3D[p]}}</small></div></div>
             <div class="draw-sequence"><span>试机号</span><span>{{trialDigits3D(targetRecord).join(' · ')}}</span><span>机型 {{targetRecord.machine}} · 球号 {{targetRecord.ball_set}}</span></div>
+            <WinningFrequency :frequency="winningFrequency" :omissions="winningOmissions" :numbers="winningNumbers" :labels="positions3D" :sample-label="`${matrix.count} 期样本 · 仅用此前样本`"/>
           </article>
           <article class="insight-card card"><div class="card-kicker"><span>样本中的高频数字</span><BarChart3 :size="17"/></div><div class="hot-balls"><div v-for="item in matrix.hot" :key="item.number"><span>{{item.number}}</span><small>{{item.count}} 次</small></div></div><p>近 {{matrix.count}} 期 · 三个位置合计出现次数</p></article>
           <article class="archive-card card"><div class="card-kicker"><span>历史档案</span><History :size="17"/></div><div class="archive-number">{{total.toLocaleString()}}<span>期</span></div><div class="archive-foot"><span>数据库已收录</span><button @click="tab='history'">查看记录 <ArrowUpRight :size="15"/></button></div></article>

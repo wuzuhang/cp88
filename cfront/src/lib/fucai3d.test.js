@@ -1,11 +1,33 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { build3DMatrix,random3D } from './fucai3d.js'
-import { frequencyLevel } from './analysis.js'
+import { frequencyLevel, positionFrequencyTotal } from './analysis.js'
+
+test('3D在500期真实基数下排除本期及更新开奖，零和重复号码按位置重算',()=>{
+  const records=Array.from({length:506},()=>({num_1:1,num_2:2,num_3:3}))
+  for(const i of [0,1,2,502,503])records[i]={num_1:0,num_2:0,num_3:0}
+  const target=build3DMatrix(records,2,500)
+  assert.equal(target.count,500)
+  assert.deepEqual(positionFrequencyTotal(target.columns,[0,0,0]),{counts:[1,1,1],total:3})
+  assert.deepEqual(target.omissions.map(column=>column[0]),Array(3).fill({periods:499,exact:true}))
+  const older=build3DMatrix(records,3,500)
+  assert.deepEqual(positionFrequencyTotal(older.columns,[0,0,0]),{counts:[2,2,2],total:6})
+  assert.deepEqual(older.omissions.map(column=>column[0]),Array(3).fill({periods:498,exact:true}))
+  assert.deepEqual(build3DMatrix(records,2,500),target)
+  assert.equal(build3DMatrix(records,0,500).columns[0].find(item=>item.number===0).count,2)
+})
+
+test('3D 中奖频次合值保留零与重复数字，仅按对应位置计数',()=>{
+  const records=[{num_1:0,num_2:0,num_3:0},{num_1:0,num_2:5,num_3:0},{num_1:0,num_2:0,num_3:9}]
+  const matrix=build3DMatrix(records,0,2)
+  assert.deepEqual(positionFrequencyTotal(matrix.columns,[0,0,0]),{counts:[2,1,1],total:4})
+  assert.deepEqual(positionFrequencyTotal(matrix.columns,[0,5,0]),{counts:[2,1,1],total:4})
+  assert.deepEqual(positionFrequencyTotal(build3DMatrix([]).columns,[0,0,0]),{counts:[0,0,0],total:0})
+})
 
 test('3D 按位置保留 0 与重复数字，历史对照排除目标期',()=>{
   const records=[{num_1:9,num_2:9,num_3:9},{num_1:0,num_2:5,num_3:0},{num_1:0,num_2:0,num_3:0}]
-  const matrix=build3DMatrix(records,1,2)
+  const matrix=build3DMatrix(records,0,2)
   assert.equal(matrix.count,2)
   assert.equal(matrix.totals[0],5)
   assert.equal(matrix.totals[5],1)

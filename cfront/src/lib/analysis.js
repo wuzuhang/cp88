@@ -2,6 +2,28 @@ export const ball = (n) => String(n).padStart(2, '0')
 export const redBalls = (record) => Array.from({length:6}, (_,i) => record[`red_${i+1}`])
 export const sequenceBalls = (record) => Array.from({length:6}, (_,i) => record[`seq_red_${i+1}`])
 
+// 按号码查找对应位置的频次，不使用排序后的行号或跨位置总频次。
+export function positionFrequencyTotal(columns, numbers) {
+  const counts = numbers.map((number, position) => columns[position]?.find(item => item.number === number)?.count ?? 0)
+  return { counts, total: counts.reduce((sum, count) => sum + count, 0) }
+}
+
+// records 按新到旧排列；目标期本身及其之后的开奖不能进入样本。
+export const sampleBeforeTarget = (records,targetIndex,size) => records.slice(targetIndex+1,targetIndex+1+size)
+
+export function positionOmissions(sample,field,size,min=1) {
+  const values=Array.from({length:size},()=>({periods:sample.length,exact:false}))
+  sample.forEach((record,index)=>{
+    const number=record[field]
+    if(Number.isInteger(number)&&number>=min&&number<min+size&&!values[number-min].exact) {
+      values[number-min]={periods:index,exact:true}
+    }
+  })
+  return values
+}
+
+export const formatOmission = omission => !omission || (!omission.exact&&omission.periods===0) ? '—' : `${omission.exact?'':'≥'}${omission.periods}`
+
 // 每个出球位置每期出现一个号码，以实际样本期数计算平均频次。
 // 相同出现比例在不同样本规模下保持相同颜色，平均频次落在中间色阶。
 export function frequencyLevel(count, sampleSize, numberCount) {
@@ -24,13 +46,15 @@ export function frequencies(records, field, size) {
 }
 
 export function buildMatrix(records, offset=0, redWindow=100, blueWindow=100) {
-  const redSample = records.slice(offset,offset+redWindow)
-  const blueSample = records.slice(offset,offset+blueWindow)
+  const redSample = sampleBeforeTarget(records,offset,redWindow)
+  const blueSample = sampleBeforeTarget(records,offset,blueWindow)
   const totals = Array(33).fill(0)
   for (const record of redSample) for (const n of redBalls(record)) if (n>=1 && n<=33) totals[n-1]++
   return {
     columns: Array.from({length:6},(_,i) => frequencies(redSample,`seq_red_${i+1}`,33)),
     blue: frequencies(blueSample,'blue',16),
+    omissions: Array.from({length:6},(_,i)=>positionOmissions(redSample,`seq_red_${i+1}`,33)),
+    blueOmissions: positionOmissions(blueSample,'blue',16),
     totals, redCount:redSample.length, blueCount:blueSample.length,
     hot: totals.map((count,i) => ({number:i+1,count})).sort((a,b) => b.count-a.count || a.number-b.number).slice(0,5),
   }

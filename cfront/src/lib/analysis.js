@@ -8,8 +8,10 @@ export function positionFrequencyTotal(columns, numbers) {
   return { counts, total: counts.reduce((sum, count) => sum + count, 0) }
 }
 
-// records 按新到旧排列；目标期本身及其之后的开奖不能进入样本。
+// records 按新到旧排列；-1 表示尚未开奖的下一期，样本从最新已开奖期开始。
 export const sampleBeforeTarget = (records,targetIndex,size) => records.slice(targetIndex+1,targetIndex+1+size)
+
+export const predictionTargetIndex = offset => offset-1
 
 export function positionOmissions(sample,field,size,min=1) {
   const values=Array.from({length:size},()=>({periods:sample.length,exact:false}))

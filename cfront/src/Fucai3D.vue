@@ -2,7 +2,7 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { ArrowDown, ArrowUpRight, BarChart3, Check, ChevronLeft, ChevronRight, CircleHelp, History, LoaderCircle, RefreshCw, RotateCcw, Shuffle, Sparkles, Grid2X2, WifiOff } from 'lucide-vue-next'
 import { analyze3D, fetchRecords, request } from './lib/api.js'
-import { frequencyLevel, positionFrequencyTotal, sampleBeforeTarget } from './lib/analysis.js'
+import { formatOmission, frequencyLevel, positionFrequencyTotal, predictionTargetIndex, sampleBeforeTarget } from './lib/analysis.js'
 import WinningFrequency from './components/WinningFrequency.vue'
 import { build3DMatrix, digits3D, positions3D, random3D, trialDigits3D } from './lib/fucai3d.js'
 
@@ -11,17 +11,17 @@ const tab=ref('matrix'),sampleWindow=ref(100),offset=ref(0),sortOrder=ref('asc')
 const selected=ref([null,null,null]),result=ref(null),analyzing=ref(false),analysisError=ref('')
 const search=ref(''),historyLimit=ref(12),moreLoading=ref(false),notice=ref('')
 let version=0
-const matrix=computed(()=>build3DMatrix(records.value,offset.value,sampleWindow.value))
+const matrix=computed(()=>build3DMatrix(records.value,predictionTargetIndex(offset.value),sampleWindow.value))
 const columns=computed(()=>matrix.value.columns.map(column=>sortOrder.value==='asc'?column:[...column].sort((a,b)=>b.count-a.count||a.number-b.number)))
 const complete=computed(()=>selected.value.every(n=>n!==null))
 const selectedCount=computed(()=>selected.value.filter(n=>n!==null).length)
-const maxOffset=computed(()=>Math.max(0,records.value.length-sampleWindow.value-1))
-const targetRecord=computed(()=>records.value[offset.value])
+const maxOffset=computed(()=>Math.max(0,records.value.length-sampleWindow.value))
+const targetRecord=computed(()=>records.value[predictionTargetIndex(offset.value)])
 const winningNumbers=computed(()=>targetRecord.value?digits3D(targetRecord.value):[])
 const winningFrequency=computed(()=>positionFrequencyTotal(matrix.value.columns,winningNumbers.value))
 const winningOmissions=computed(()=>winningNumbers.value.map((number,p)=>matrix.value.omissions[p][number]))
 const sampleLabel=computed(()=>{
-  const sample=sampleBeforeTarget(records.value,offset.value,sampleWindow.value)
+  const sample=sampleBeforeTarget(records.value,predictionTargetIndex(offset.value),sampleWindow.value)
   return sample.length?`${sample.at(-1).issue} — ${sample[0].issue}`:'等待历史数据'
 })
 const history=computed(()=>records.value.filter(r=>`${r.issue} ${r.draw_date}`.includes(search.value.trim())))
@@ -36,12 +36,12 @@ function reset(){selected.value=[null,null,null];analysisError.value='';notice.v
 function randomize(){selected.value=random3D();notice.value='已生成一组随机号码'}
 function setOffset(value){
   offset.value=Math.min(maxOffset.value,Math.max(0,value))
-  if(!records.value[offset.value]){reset();return}
-  selected.value=digits3D(records.value[offset.value]);notice.value='仅使用对照期之前的样本'
+  if(!records.value[predictionTargetIndex(offset.value)]){reset();return}
+  selected.value=digits3D(records.value[predictionTargetIndex(offset.value)]);notice.value='仅使用对照期之前的样本'
 }
 function useHistory(record){
   const index=records.value.findIndex(r=>r.issue===record.issue)
-  if(index<=maxOffset.value){setOffset(index);tab.value='matrix'}
+  if(index+1<=maxOffset.value){setOffset(index+1);tab.value='matrix'}
   else{selected.value=digits3D(record);tab.value='picker';notice.value='已载入号码；更早的历史样本不足，未切换对照窗口'}
 }
 async function analyze(){
@@ -94,11 +94,19 @@ onMounted(load)
       <template v-else>
         <section class="overview-grid">
           <article class="latest-card card">
+            <template v-if="targetRecord">
             <div class="card-kicker"><span><span class="live-dot"></span>{{offset?'历史对照':'最新开奖'}}</span><span class="date">{{targetRecord.draw_date}}</span></div>
             <div class="issue-line"><h2>第 {{targetRecord.issue}} 期</h2><span class="subtle-tag">{{offset?'仅用此前样本':'福彩 3D'}}</span></div>
             <div class="three-draw"><div v-for="(digit,p) in digits3D(targetRecord)" :key="p"><span class="draw-ball red">{{digit}}</span><small>{{positions3D[p]}}</small></div></div>
             <div class="draw-sequence"><span>试机号</span><span>{{trialDigits3D(targetRecord).join(' · ')}}</span><span>机型 {{targetRecord.machine}} · 球号 {{targetRecord.ball_set}}</span></div>
             <WinningFrequency :frequency="winningFrequency" :omissions="winningOmissions" :numbers="winningNumbers" :labels="positions3D" :sample-label="`${matrix.count} 期样本 · 仅用此前样本`"/>
+            </template>
+            <template v-else>
+              <div class="card-kicker"><span><span class="live-dot"></span>下一期预测</span><span>福彩 3D</span></div>
+              <div class="issue-line"><h2>下一期尚未开奖</h2><span class="subtle-tag">等待开奖</span></div>
+              <p class="prediction-pending">暂无中奖号码。最新已开奖 {{records[0].issue}} 期已计入频次和遗漏样本。</p>
+              <div class="draw-sequence"><span>{{matrix.count}} 期样本</span></div>
+            </template>
           </article>
           <article class="insight-card card"><div class="card-kicker"><span>样本中的高频数字</span><BarChart3 :size="17"/></div><div class="hot-balls"><div v-for="item in matrix.hot" :key="item.number"><span>{{item.number}}</span><small>{{item.count}} 次</small></div></div><p>近 {{matrix.count}} 期 · 三个位置合计出现次数</p></article>
           <article class="archive-card card"><div class="card-kicker"><span>历史档案</span><History :size="17"/></div><div class="archive-number">{{total.toLocaleString()}}<span>期</span></div><div class="archive-foot"><span>数据库已收录</span><button @click="tab='history'">查看记录 <ArrowUpRight :size="15"/></button></div></article>
@@ -108,9 +116,9 @@ onMounted(load)
             <nav class="tabs" aria-label="福彩3D分析视图"><button :class="{active:tab==='matrix'}" @click="tab='matrix'"><Grid2X2 :size="16"/>频次矩阵</button><button :class="{active:tab==='picker'}" @click="tab='picker'"><Sparkles :size="16"/>号码选择</button><button :class="{active:tab==='history'}" @click="tab='history'"><History :size="16"/>开奖历史</button></nav>
             <div v-if="tab==='matrix'" class="panel-content matrix-content">
               <div class="section-heading"><div><h2>号码频次矩阵 <span class="mini-label">POSITION FREQUENCY</span></h2><p>百、十、个位分别计数，每列独立排序。</p></div><button class="sort-button" @click="sortOrder=sortOrder==='asc'?'desc':'asc'"><ArrowDown :size="14"/>{{sortOrder==='asc'?'低频优先':'高频优先'}}</button></div>
-              <div class="sample-toolbar"><div class="sample-selects"><label>号码样本 <select v-model.number="sampleWindow"><option v-for="n in 10" :key="n" :value="n*100">近 {{n*100}} 期</option></select></label></div><div class="period-controls"><button @click="setOffset(offset+1)" :disabled="offset>=maxOffset" aria-label="向前对照一期"><ChevronLeft :size="17"/></button><span>{{offset?`向前 ${offset} 期`:'最新样本'}}</span><button @click="setOffset(offset-1)" :disabled="offset===0" aria-label="返回较新一期"><ChevronRight :size="17"/></button></div></div>
+              <div class="sample-toolbar"><div class="sample-selects"><label>号码样本 <select v-model.number="sampleWindow"><option v-for="n in 10" :key="n" :value="n*100">近 {{n*100}} 期</option></select></label></div><div class="period-controls"><button @click="setOffset(offset+1)" :disabled="offset>=maxOffset" aria-label="向前对照一期"><ChevronLeft :size="17"/></button><span>{{offset?`向前 ${offset} 期`:'下一期预测'}}</span><button @click="setOffset(offset-1)" :disabled="offset===0" aria-label="返回较新一期"><ChevronRight :size="17"/></button></div></div>
               <div class="matrix-meta"><span>样本期号 <b>{{sampleLabel}}</b></span><span>实际 {{matrix.count}} 期</span></div>
-              <div class="matrix-wrap"><table class="frequency-table three-frequency"><caption class="sr-only">0 到 9 总频次与百、十、个位独立频次排名</caption><thead><tr><th class="total-heading">数字<small>三位合计</small></th><th v-for="position in positions3D" :key="position">{{position}}<small>{{matrix.count}} 期</small></th></tr></thead><tbody><tr v-for="(_,i) in 10" :key="i"><td class="total-cell"><span class="three-total"><b>{{i}}</b><small>{{matrix.totals[i]}}</small></span></td><td v-for="(column,p) in columns" :key="p" :class="['heat-cell',`heat-${frequencyLevel(column[i].count,matrix.count,10)}`]"><button :class="{selected:selected[p]===column[i].number}" @click="choose(p,column[i].number)" :aria-pressed="selected[p]===column[i].number" :aria-label="`${positions3D[p]}数字${column[i].number}，出现${column[i].count}次`"><b>{{column[i].number}}</b><span>{{column[i].count}}</span></button></td></tr></tbody></table></div>
+              <div class="matrix-wrap"><table class="frequency-table three-frequency"><caption class="sr-only">0 到 9 总频次与百、十、个位独立频次排名</caption><thead><tr><th class="total-heading">数字<small>三位合计</small></th><th v-for="position in positions3D" :key="position">{{position}}<small>{{matrix.count}} 期</small></th></tr></thead><tbody><tr v-for="(_,i) in 10" :key="i"><td class="total-cell"><span class="three-total"><b>{{i}}</b><small>{{matrix.totals[i]}}</small></span></td><td v-for="(column,p) in columns" :key="p" :class="['heat-cell',`heat-${frequencyLevel(column[i].count,matrix.count,10)}`]"><button :class="{selected:selected[p]===column[i].number}" @click="choose(p,column[i].number)" :aria-pressed="selected[p]===column[i].number" :aria-label="`${positions3D[p]}数字${column[i].number}，出现${column[i].count}次`"><b>{{column[i].number}}</b><span>{{column[i].count}}</span><small class="matrix-omission">漏{{formatOmission(matrix.omissions[p][column[i].number])}}</small></button></td></tr></tbody></table></div>
               <div class="matrix-bottom"><div class="heat-legend"><span>相对频次</span><i v-for="n in 5" :key="n" :class="`heat-${n-1}`"></i><span>低 → 高</span></div><span class="three-sample-note">平均频次 = 实际期数 ÷ 10</span></div>
               <div class="matrix-tip"><CircleHelp :size="14"/><span>点击格子选择该位置的数字。允许重复，0 为有效号码；颜色随实际样本期数调整。同一行不代表一组号码。</span></div>
             </div>

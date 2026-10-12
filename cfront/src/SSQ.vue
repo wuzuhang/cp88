@@ -2,7 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { ArrowDown, ArrowUpRight, BarChart3, Check, ChevronDown, ChevronLeft, ChevronRight, CircleHelp, Clock3, Grid2X2, History, LoaderCircle, RefreshCw, RotateCcw, Shuffle, Sparkles, WifiOff } from 'lucide-vue-next'
 import { analyzeBalls, fetchRecords, request } from './lib/api.js'
-import { ball, buildMatrix, frequencyLevel, positionFrequencyTotal, randomCombination, redBalls, sampleBeforeTarget, sequenceBalls } from './lib/analysis.js'
+import { ball, buildMatrix, formatOmission, frequencyLevel, positionFrequencyTotal, predictionTargetIndex, randomCombination, redBalls, sampleBeforeTarget, sequenceBalls } from './lib/analysis.js'
 import WinningFrequency from './components/WinningFrequency.vue'
 
 const records = ref([])
@@ -24,18 +24,18 @@ const notice = ref('')
 const search = ref('')
 const historyLimit = ref(12)
 const moreLoading = ref(false)
-const matrix = computed(() => buildMatrix(records.value,offset.value,redWindow.value,blueWindow.value))
+const matrix = computed(() => buildMatrix(records.value,predictionTargetIndex(offset.value),redWindow.value,blueWindow.value))
 const columns = computed(() => matrix.value.columns.map(list => sortOrder.value === 'asc' ? list : [...list].sort((a,b) => b.count-a.count || a.number-b.number)))
 const blueColumn = computed(() => sortOrder.value === 'asc' ? matrix.value.blue : [...matrix.value.blue].sort((a,b) => b.count-a.count || a.number-b.number))
 const chosenReds = computed(() => selected.value.filter(n => n !== null).sort((a,b) => a-b))
 const complete = computed(() => chosenReds.value.length === 6 && blue.value !== null)
-const targetRecord = computed(() => records.value[offset.value])
+const targetRecord = computed(() => records.value[predictionTargetIndex(offset.value)])
 const winningNumbers = computed(() => targetRecord.value ? [...sequenceBalls(targetRecord.value),targetRecord.value.blue] : [])
 const winningFrequency = computed(() => positionFrequencyTotal([...matrix.value.columns,matrix.value.blue],winningNumbers.value))
 const winningOmissions = computed(() => winningNumbers.value.map((number,p)=>p<6?matrix.value.omissions[p][number-1]:matrix.value.blueOmissions[number-1]))
-const maxOffset = computed(() => Math.max(0,records.value.length-Math.max(redWindow.value,blueWindow.value)-1))
+const maxOffset = computed(() => Math.max(0,records.value.length-Math.max(redWindow.value,blueWindow.value)))
 const sampleLabel = computed(() => {
-  const items=sampleBeforeTarget(records.value,offset.value,redWindow.value)
+  const items=sampleBeforeTarget(records.value,predictionTargetIndex(offset.value),redWindow.value)
   return items.length ? `${items.at(-1).issue} — ${items[0].issue}` : '等待历史数据'
 })
 const filteredHistory = computed(() => records.value.filter(r => `${r.issue} ${r.draw_date}`.includes(search.value.trim())))
@@ -88,7 +88,7 @@ function reset() { selected.value=Array(6).fill(null); blue.value=null; analysis
 
 function setOffset(value) {
   offset.value=Math.min(maxOffset.value,Math.max(0,value))
-  const record=records.value[offset.value]
+  const record=records.value[predictionTargetIndex(offset.value)]
   if(!record) { reset(); return }
   selected.value=sequenceBalls(record)
   blue.value=record.blue
@@ -96,8 +96,8 @@ function setOffset(value) {
 
 function useHistory(record) {
   const index=records.value.findIndex(r=>r.issue===record.issue)
-  if(index<=maxOffset.value) {
-    setOffset(index)
+  if(index+1<=maxOffset.value) {
+    setOffset(index+1)
     notify(`已对照 ${record.issue} 期，样本仅使用更早的开奖`)
     tab.value='matrix'
   } else {
@@ -167,11 +167,19 @@ onBeforeUnmount(()=>clearTimeout(noticeTimer))
       <template v-else>
         <section class="overview-grid">
           <article class="latest-card card">
+            <template v-if="targetRecord">
             <div class="card-kicker"><span><span class="live-dot"></span>{{ offset ? '历史对照' : '最新开奖' }}</span><span class="date">{{ targetRecord.draw_date }}</span></div>
             <div class="issue-line"><h2>第 {{ targetRecord.issue }} 期</h2><span class="subtle-tag">{{ offset ? '仅用此前样本' : '双色球' }}</span></div>
             <div class="draw-balls"><span v-for="n in redBalls(targetRecord)" :key="n" class="draw-ball red">{{ ball(n) }}</span><span class="ball-divider"></span><span class="draw-ball blue">{{ ball(targetRecord.blue) }}</span></div>
             <div class="draw-sequence"><span>出球顺序</span><span>{{ sequenceBalls(targetRecord).map(ball).join(' · ') }}</span></div>
             <WinningFrequency :frequency="winningFrequency" :omissions="winningOmissions" :numbers="winningNumbers.map(ball)" :labels="['红1','红2','红3','红4','红5','红6','蓝球']" :sample-label="`红球 ${matrix.redCount} 期 / 蓝球 ${matrix.blueCount} 期 · 仅用此前样本`"/>
+            </template>
+            <template v-else>
+              <div class="card-kicker"><span><span class="live-dot"></span>下一期预测</span><span>双色球</span></div>
+              <div class="issue-line"><h2>下一期尚未开奖</h2><span class="subtle-tag">等待开奖</span></div>
+              <p class="prediction-pending">暂无中奖号码。最新已开奖 {{records[0].issue}} 期已计入频次和遗漏样本。</p>
+              <div class="draw-sequence"><span>红球 {{matrix.redCount}} 期 · 蓝球 {{matrix.blueCount}} 期</span></div>
+            </template>
           </article>
           <article class="insight-card card">
             <div class="card-kicker"><span>样本中的高频号码</span><BarChart3 :size="17" /></div>
@@ -187,9 +195,9 @@ onBeforeUnmount(()=>clearTimeout(noticeTimer))
 
             <div v-if="tab==='matrix'" class="panel-content matrix-content">
               <div class="section-heading"><div><h2>号码频次矩阵 <span class="mini-label">POSITION FREQUENCY</span></h2><p>按实际出球顺序分列，每列独立排序。</p></div><button class="sort-button" @click="sortOrder=sortOrder==='asc'?'desc':'asc'"><ArrowDown :size="14" :class="{flipped:sortOrder==='desc'}"/>{{ sortOrder==='asc'?'低频优先':'高频优先' }}</button></div>
-              <div class="sample-toolbar"><div class="sample-selects"><label>红球样本 <select v-model.number="redWindow"><option v-for="n in 10" :key="n" :value="n*100">近 {{ n*100 }} 期</option></select></label><span class="toolbar-divider"></span><label>蓝球样本 <select v-model.number="blueWindow"><option v-for="n in 10" :key="n" :value="n*100">近 {{ n*100 }} 期</option></select></label></div><div class="period-controls"><button @click="setOffset(offset+1)" :disabled="offset>=maxOffset" aria-label="向前对照一期"><ChevronLeft :size="17"/></button><span>{{ offset ? `向前 ${offset} 期` : '最新样本' }}</span><button @click="setOffset(offset-1)" :disabled="offset===0" aria-label="返回较新一期"><ChevronRight :size="17"/></button></div></div>
+              <div class="sample-toolbar"><div class="sample-selects"><label>红球样本 <select v-model.number="redWindow"><option v-for="n in 10" :key="n" :value="n*100">近 {{ n*100 }} 期</option></select></label><span class="toolbar-divider"></span><label>蓝球样本 <select v-model.number="blueWindow"><option v-for="n in 10" :key="n" :value="n*100">近 {{ n*100 }} 期</option></select></label></div><div class="period-controls"><button @click="setOffset(offset+1)" :disabled="offset>=maxOffset" aria-label="向前对照一期"><ChevronLeft :size="17"/></button><span>{{ offset ? `向前 ${offset} 期` : '下一期预测' }}</span><button @click="setOffset(offset-1)" :disabled="offset===0" aria-label="返回较新一期"><ChevronRight :size="17"/></button></div></div>
               <div class="matrix-meta"><span>样本期号 <b>{{ sampleLabel }}</b></span><span><i class="tiny-ring"></i> 点击格子选择号码</span></div>
-              <div class="matrix-wrap"><table class="frequency-table"><caption class="sr-only">红球总频次、六个出球位置独立排名和蓝球独立排名</caption><thead><tr><th class="total-heading">号码<small>总频次</small></th><th v-for="n in 6" :key="n">红 {{ n }}<small>第 {{ n }} 位</small></th><th class="blue-heading">蓝球<small>{{ matrix.blueCount }} 期</small></th></tr></thead><tbody><tr v-for="(_,i) in (expanded?33:16)" :key="i"><td class="total-cell"><button @click="toggleRed(i+1)" :class="{chosen:chosenReds.includes(i+1)}" :aria-label="`红球${i+1}，总出现${matrix.totals[i]}次`"><b>{{ ball(i+1) }}</b><span>{{ matrix.totals[i] }}</span></button></td><td v-for="(column,position) in columns" :key="position" :class="['heat-cell',`heat-${frequencyLevel(column[i].count,matrix.redCount,33)}`]"><button :class="{selected:selected[position]===column[i].number}" @click="selectPosition(position,column[i].number)" :aria-pressed="selected[position]===column[i].number" :aria-label="`出球位置${position+1}，红球${column[i].number}，出现${column[i].count}次`"><b>{{ ball(column[i].number) }}</b><span>{{ column[i].count }}</span></button></td><td class="blue-cell" :class="i<16?`blue-heat-${frequencyLevel(blueColumn[i].count,matrix.blueCount,16)}`:'blank-cell'"><button v-if="i<16" :class="{selected:blue===blueColumn[i].number}" @click="blue=blue===blueColumn[i].number?null:blueColumn[i].number" :aria-pressed="blue===blueColumn[i].number" :aria-label="`蓝球${blueColumn[i].number}，出现${blueColumn[i].count}次`"><b>{{ ball(blueColumn[i].number) }}</b><span>{{ blueColumn[i].count }}</span></button><span v-else>—</span></td></tr></tbody></table></div>
+              <div class="matrix-wrap"><table class="frequency-table"><caption class="sr-only">红球总频次、六个出球位置独立排名和蓝球独立排名</caption><thead><tr><th class="total-heading">号码<small>总频次</small></th><th v-for="n in 6" :key="n">红 {{ n }}<small>第 {{ n }} 位</small></th><th class="blue-heading">蓝球<small>{{ matrix.blueCount }} 期</small></th></tr></thead><tbody><tr v-for="(_,i) in (expanded?33:16)" :key="i"><td class="total-cell"><button @click="toggleRed(i+1)" :class="{chosen:chosenReds.includes(i+1)}" :aria-label="`红球${i+1}，总出现${matrix.totals[i]}次`"><b>{{ ball(i+1) }}</b><span>{{ matrix.totals[i] }}</span></button></td><td v-for="(column,position) in columns" :key="position" :class="['heat-cell',`heat-${frequencyLevel(column[i].count,matrix.redCount,33)}`]"><button :class="{selected:selected[position]===column[i].number}" @click="selectPosition(position,column[i].number)" :aria-pressed="selected[position]===column[i].number" :aria-label="`出球位置${position+1}，红球${column[i].number}，出现${column[i].count}次`"><b>{{ ball(column[i].number) }}</b><span>{{ column[i].count }}</span><small class="matrix-omission">漏{{formatOmission(matrix.omissions[position][column[i].number-1])}}</small></button></td><td class="blue-cell" :class="i<16?`blue-heat-${frequencyLevel(blueColumn[i].count,matrix.blueCount,16)}`:'blank-cell'"><button v-if="i<16" :class="{selected:blue===blueColumn[i].number}" @click="blue=blue===blueColumn[i].number?null:blueColumn[i].number" :aria-pressed="blue===blueColumn[i].number" :aria-label="`蓝球${blueColumn[i].number}，出现${blueColumn[i].count}次`"><b>{{ ball(blueColumn[i].number) }}</b><span>{{ blueColumn[i].count }}</span><small class="matrix-omission">漏{{formatOmission(matrix.blueOmissions[blueColumn[i].number-1])}}</small></button><span v-else>—</span></td></tr></tbody></table></div>
               <div class="matrix-bottom"><div class="heat-legend"><span title="按实际样本期数归一化：平均频次 = 期数 ÷ 号码数量">相对频次</span><i v-for="n in 5" :key="n" :class="`heat-${n-1}`"></i><span>低 → 高</span></div><button @click="expanded=!expanded">{{ expanded?'收起矩阵':'展开全部 33 行' }}<ChevronDown :size="15" :class="{flipped:expanded}"/></button></div>
               <div class="matrix-tip"><CircleHelp :size="14"/><span>小数字为出现次数，颜色按实际样本期数动态调整。红球各位置按 33 个号码、蓝球按 16 个号码分别计算平均频次。各列独立排序，同一行不代表一组号码。</span></div>
             </div>

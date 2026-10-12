@@ -44,3 +44,7 @@
   .dock-selection i { margin:0 2px; }
   .dock-analyze { font-size:10px;padding:10px; }
 }
+
+.prediction-pending{font-size:12px;line-height:1.9;color:#89977e;margin:18px 0}
+.frequency-table .heat-cell button,.frequency-table .blue-cell button{position:relative;padding-bottom:12px}
+.frequency-table .matrix-omission{position:absolute;bottom:2px;left:0;right:0;text-align:center;font-size:8px;font-weight:400;line-height:10px;color:inherit;opacity:.7}

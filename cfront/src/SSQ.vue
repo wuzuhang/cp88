@@ -12,6 +12,8 @@ const loadError = ref('')
 const tab = ref('matrix')
 const offset = ref(0)
 const sampleWindow = ref(100)
+const predictionPanel = ref(null)
+const advancing = ref(false)
 const sortOrder = ref('asc')
 const expanded = ref(false)
 const selected = ref(Array(6).fill(null))
@@ -30,7 +32,7 @@ const chosenReds = computed(() => selected.value.filter(n => n !== null).sort((a
 const complete = computed(() => chosenReds.value.length === 6 && blue.value !== null)
 const targetRecord = computed(() => records.value[predictionTargetIndex(offset.value)])
 const predictionSample = computed(() => sampleBeforeTarget(records.value,predictionTargetIndex(offset.value),sampleWindow.value))
-function useReference(row){selected.value=[...row.reds];blue.value=row.blue;tab.value='picker';notify('已载入参考号码，可继续查看组合特征')}
+function useReference(row){selected.value=[...(row.sequence || row.reds)];blue.value=row.blue;tab.value='picker';notify('已载入参考号码，可继续查看组合特征')}
 const maxOffset = computed(() => Math.max(0,records.value.length-sampleWindow.value))
 const sampleLabel = computed(() => {
   const items=sampleBeforeTarget(records.value,predictionTargetIndex(offset.value),sampleWindow.value)
@@ -90,6 +92,17 @@ function setOffset(value) {
   if(!record) { reset(); return }
   selected.value=sequenceBalls(record)
   blue.value=record.blue
+}
+
+async function predictPrevious() {
+  if(advancing.value || offset.value>=maxOffset.value)return
+  advancing.value=true
+  try {
+    setOffset(offset.value+1)
+    // 等待新目标期和样本传给预测组件，再调用预测，避免使用切换前的样本。
+    await nextTick()
+    await predictionPanel.value?.generate()
+  } finally { advancing.value=false }
 }
 
 function useHistory(record) {
@@ -198,7 +211,9 @@ async function updateLatest(){
           <article class="archive-card card"><div class="card-kicker"><span>历史档案</span><History :size="17"/></div><div class="archive-number">{{ total.toLocaleString() }}<span>期</span></div><div class="archive-foot"><span>数据库已收录</span><button @click="tab='history'">查看记录 <ArrowUpRight :size="15"/></button></div></article>
         </section>
 
-        <PredictionReferences game="ssq" :sample="predictionSample" :winning-record="targetRecord" :target-label="targetRecord?`第 ${targetRecord.issue} 期历史对照`:'下一期参考'" @use="useReference"/>
+        <PredictionReferences ref="predictionPanel" game="ssq" :sample="predictionSample" :winning-record="targetRecord" :target-label="targetRecord?`第 ${targetRecord.issue} 期历史对照`:'下一期参考'" @use="useReference">
+          <template #actions="{generating}"><button class="button secondary" @click="predictPrevious" :disabled="generating||advancing||offset>=maxOffset" aria-label="向前一期并预测10注双色球"><ChevronLeft :size="15"/>{{advancing?'正在切换并预测…':'向前一期并预测10注'}}</button></template>
+        </PredictionReferences>
         <div class="analysis-layout">
           <section class="main-panel card">
             <nav class="tabs" aria-label="分析视图"><button :class="{active:tab==='matrix'}" @click="tab='matrix'"><Grid2X2 :size="16"/>频次矩阵</button><button :class="{active:tab==='picker'}" @click="tab='picker'"><Sparkles :size="16"/>号码选择</button><button :class="{active:tab==='history'}" @click="tab='history'"><History :size="16"/>开奖历史</button></nav>

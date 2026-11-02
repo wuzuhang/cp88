@@ -2,7 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { ArrowUpRight, LoaderCircle, Sparkles } from 'lucide-vue-next'
 import { ball } from '../lib/analysis.js'
-import { comparePrediction, generateReferences } from '../lib/prediction.js'
+import { comparePrediction, generateReferences, retainReferences } from '../lib/prediction.js'
 
 const props=defineProps({game:{type:String,required:true},sample:{type:Array,required:true},targetLabel:{type:String,required:true},winningRecord:{type:Object,default:null}})
 defineEmits(['use'])
@@ -20,23 +20,25 @@ async function generate(){
   await nextTick()
   await new Promise(resolve=>setTimeout(resolve,0))
   if(current!==version)return
-  try{const data=generateReferences(game,sample);if(current===version)output.value=data}
+  try{const data=retainReferences(game,generateReferences(game,sample));if(current===version)output.value=data}
   catch(err){if(current===version){output.value=null;error.value=err.message}}
   finally{if(current===version)generating.value=false}
 }
+defineExpose({generate})
 </script>
 
 <template>
   <section class="reference-panel card" :aria-label="`${gameName}预测参考`">
-    <div class="reference-heading"><div><span class="eyebrow">STATISTICAL REFERENCE</span><h2>{{gameName}}预测参考</h2><p>{{targetLabel}} · 实际 {{sample.length}} 期样本 · 贝叶斯平滑与{{game==='ssq'?'独立抽样':'加权抽样'}}</p></div><button class="button reference-generate" @click="generate" :disabled="generating||!sample.length"><LoaderCircle v-if="generating" :size="16" class="spinning"/><Sparkles v-else :size="16"/>{{generating?'分析样本中…':`预测10注${game==='ssq'?'双色球':'3D'}`}}</button></div>
+    <div class="reference-heading"><div><span class="eyebrow">STATISTICAL REFERENCE</span><h2>{{gameName}}预测参考</h2><p>{{targetLabel}} · 实际 {{sample.length}} 期样本 · 贝叶斯平滑与{{game==='ssq'?'独立抽样':'加权抽样'}}</p></div><div class="reference-actions"><slot name="actions" :generating="generating"></slot><button class="button reference-generate" @click="generate" :disabled="generating||!sample.length"><LoaderCircle v-if="generating" :size="16" class="spinning"/><Sparkles v-else :size="16"/>{{generating?'分析样本中…':`预测10注${game==='ssq'?'双色球':'3D'}`}}</button></div></div>
+    <p v-if="game==='ssq'" class="reference-conditions">筛选条件：与样本最新一期红球重合1～2个、恰好一组两连号（禁止三连号及多组连号）；各红球出球位置排除遗漏最大和最小号码，蓝球排除上期蓝球及遗漏极值；并列极值全部排除。</p>
     <p v-if="error" class="analysis-error" role="alert">{{error}}</p>
     <template v-if="output">
       <div class="reference-summary"><div><small>样本期号</small><b>{{output.firstIssue}} — {{output.lastIssue}}</b></div><div><small>{{game==='ssq'?'红球':'三位'}}和值均值 ± 标准差</small><b>{{output.meanSum.toFixed(1)}} ± {{output.sdSum.toFixed(1)}}</b></div><div><small>平均跨度</small><b>{{output.meanSpan.toFixed(1)}}</b></div><div><small title="归一化信息熵取值0到1，越接近1表示各位置分布越均匀；不是预测准确率">位置平均信息熵</small><b>{{output.entropy.toFixed(3)}} <small>/ 1</small></b></div></div>
-      <p v-if="game==='ssq'" class="reference-disclaimer">10注按同一个样本模型独立抽取，注间允许重复；每注内部六个红球不重复。</p>
+      <p v-if="game==='ssq'" class="reference-disclaimer">按同一模型独立生成10注并全部显示；注间允许重复，每注内部六个红球不重复。</p>
       <p v-if="winningRecord" class="reference-match-legend">对照第 {{winningRecord.issue}} 期 · ✓ 标记命中号码{{game==='fucai3d'?'（按百、十、个位对应比较）':'（红球不分出球顺序，蓝球单独比较）'}}</p>
       <div class="reference-list">
         <article v-for="(row,index) in comparedRows" :key="`${index}:${row.key}`" class="reference-row">
-          <span class="reference-index">{{String(index+1).padStart(2,'0')}}</span>
+          <span class="reference-index">{{String(row.ordinal ?? index+1).padStart(2,'0')}}</span>
           <div class="reference-combination">
             <div class="reference-balls">
               <template v-if="game==='ssq'">
@@ -49,12 +51,14 @@ async function generate(){
               </template>
             </div>
             <p>和值 {{row.sum}} · 跨度 {{row.span}} · 奇偶 {{row.odd}}:{{(game==='ssq'?6:3)-row.odd}}</p>
+            <p v-if="game==='ssq'">上期重号 {{row.repeatCount}} 个 · 连号 {{row.consecutivePairs.map(pair=>pair.map(ball).join('–')).join(' / ')}}</p>
+            <p v-if="game==='ssq'">位置参考 {{row.sequence.map(ball).join(' · ')}}</p>
             <p v-if="row.comparison" class="reference-hit-summary"><template v-if="game==='ssq'">红球命中 {{row.comparison.redCount}} / 6 · 蓝球{{row.comparison.blueMatch?'命中':'未中'}}</template><template v-else>同位命中 {{row.comparison.positionCount}} / 3</template></p>
           </div>
-          <button class="reference-use" @click="$emit('use',row)" :aria-label="`载入参考第${index+1}注`">载入<ArrowUpRight :size="13"/></button>
+          <button class="reference-use" @click="$emit('use',row)" :aria-label="`载入参考第${row.ordinal ?? index+1}注`">载入<ArrowUpRight :size="13"/></button>
         </article>
       </div>
-      <details class="reference-method"><summary>查看分析方法与统计口径</summary><p>各位置采用对称 Dirichlet 先验，总伪计数为 50。平滑权重为（出现次数＋50÷号码数量）÷（实际样本期数＋50），降低短期波动。信息熵用于描述分布均匀程度；遗漏用于观察历史，不作为“该出了”的加分依据。</p><p v-if="game==='ssq'">每注都按同一个样本模型独立计算。动态规划汇总全部合法红球分配的条件权重，按条件分布抽出六个互不重复红球，再独立抽取蓝球；最终红球升序显示。各注不去重、不互相调整权重，允许重复号码和完全相同的组合。</p><p v-else>完整枚举 000–999，按百、十、个位的平滑权重乘积抽样。这是独立位置模型，允许 0、重复数字和豹子；参考号码按单选的百十个位顺序展示。</p><p v-if="game==='fucai3d'">3D保留分散规则：对相似组合施加分散惩罚，再不放回抽取10注。</p><p>序号仅作编号，不代表中奖率排名。切换样本、历史目标期或更新数据后，旧结果会清空。</p></details>
+      <details class="reference-method"><summary>查看分析方法与统计口径</summary><p>各位置采用对称 Dirichlet 先验，总伪计数为 50。平滑权重为（出现次数＋50÷号码数量）÷（实际样本期数＋50），降低短期波动。信息熵用于描述分布均匀程度；遗漏用于观察历史，不作为“该出了”的加分依据。</p><p v-if="game==='ssq'">每注都按同一个样本模型独立计算。红球以六个出球位置分别计算遗漏，排除各位置遗漏最大和最小的全部并列号码；蓝球按蓝球列计算并额外排除上期蓝球。未在样本中出现的号码按实际样本期数记遗漏下界，属于样本内最大档时一并排除。动态规划同时约束重号为1～2个及恰好一组两连号（禁止三连号及多组连号），按满足全部条件的模型权重抽取，注间不去重、不施加分散惩罚。若不存在可行组合则提示错误，不放宽条件。</p><p v-else>完整枚举 000–999，按百、十、个位的平滑权重乘积抽样。这是独立位置模型，允许 0、重复数字和豹子；参考号码按单选的百十个位顺序展示。</p><div v-if="game==='ssq'&&output.rules" class="reference-exclusions"><p>条件参考上期：{{output.rules.latestIssue}}，红球 {{output.rules.latestReds.map(ball).join(' · ')}}，蓝球 {{ball(output.rules.latestBlue)}}。历史回看采用目标期之前的样本最新一期。</p><ul><li v-for="(numbers,p) in output.rules.redExcluded" :key="p">红{{p+1}}位置排除：{{numbers.map(ball).join('、')}}</li><li>蓝球排除：{{output.rules.blueExcluded.map(ball).join('、')}}</li></ul></div><p v-if="game==='fucai3d'">3D保留分散规则：对相似组合施加分散惩罚，再不放回抽取10注。</p><p>全部10注均保留显示；序号仅作编号，不代表中奖率排名。切换样本、历史目标期或更新数据后，旧结果会清空。</p></details>
     </template>
     <p class="reference-disclaimer">历史模型不能改变独立随机开奖的理论概率。这10注仅供统计参考，不保证中奖或提高中奖率。</p>
   </section>
@@ -65,4 +69,6 @@ async function generate(){
 @media(max-width:800px){.reference-panel{padding:20px}.reference-heading{align-items:flex-start;flex-wrap:wrap}.reference-generate{margin-left:auto}.reference-summary{grid-template-columns:1fr 1fr;gap:15px}.reference-list{grid-template-columns:1fr}}
 @media(max-width:360px){.reference-row{gap:7px}.reference-balls{gap:4px}.reference-balls .small-ball{width:22px;height:22px;font-size:10px}.reference-use{font-size:9px}.reference-summary{padding:12px;gap:13px}.reference-summary b{font-size:11px}.reference-panel{padding:18px 14px}}
 .reference-balls .small-ball.matched{position:relative;background:#ce5b57;color:#fff;border:1px solid #c65450;box-shadow:0 0 0 2px #f5ded9}.reference-balls .small-ball.blue.matched{background:#547fac;border-color:#4d76a2;box-shadow:0 0 0 2px #dfe9f5}.reference-balls .small-ball.matched::after{content:'✓';position:absolute;right:-3px;bottom:-3px;display:flex;align-items:center;justify-content:center;width:11px;height:11px;border-radius:50%;background:#304d3e;color:white;border:1px solid white;font-size:8px;line-height:1}.reference-balls .small-ball.not-matched{opacity:.48}.reference-match-legend{font-size:11px;color:#6c825c;line-height:1.9;margin-top:13px}.reference-combination .reference-hit-summary{color:#5c7c49;font-size:10px}
+.reference-conditions{font-size:11px;line-height:1.9;color:#89977e;margin-top:14px}.reference-exclusions ul{margin:8px 0;padding-left:18px}.reference-exclusions li{overflow-wrap:anywhere}
+.reference-actions{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:8px;max-width:100%;min-width:0}.reference-actions .button{min-height:40px}
 </style>

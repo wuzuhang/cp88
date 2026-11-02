@@ -1,4 +1,4 @@
-import { redBalls, sequenceBalls } from './analysis.js'
+import { positionOmissions, redBalls, sequenceBalls } from './analysis.js'
 import { digits3D } from './fucai3d.js'
 
 export const PRIOR_STRENGTH = 50
@@ -51,20 +51,81 @@ export function buildRedAssignmentTable(positions) {
   return table
 }
 
-function independentSSQ(model,random) {
-  const table=buildRedAssignmentTable(model.positions)
+function omissionExclusions(sample,field,size) {
+  const omissions=positionOmissions(sample,field,size)
+  const minimum=Math.min(...omissions.map(value=>value.periods))
+  const maximum=Math.max(...omissions.map(value=>value.periods))
+  const minimumNumbers=[],maximumNumbers=[]
+  omissions.forEach((value,index)=>{
+    if(value.periods===minimum)minimumNumbers.push(index+1)
+    if(value.periods===maximum)maximumNumbers.push(index+1)
+  })
+  return {minimum,maximum,minimumNumbers,maximumNumbers,excluded:[...new Set([...minimumNumbers,...maximumNumbers])].sort((a,b)=>a-b)}
+}
+
+// 红球极值逐个出球位置计算；样本内未出现统一使用样本长度作为遗漏下界。
+export function buildSSQPredictionRules(sample) {
+  if(!sample.length)throw new Error('当前窗口没有可分析的历史数据')
+  const redExtrema=Array.from({length:6},(_,p)=>omissionExclusions(sample,`seq_red_${p+1}`,33))
+  const blueExtrema=omissionExclusions(sample,'blue',16)
+  return {
+    latestIssue:sample[0].issue || '—',
+    latestReds:[...sequenceBalls(sample[0])].sort((a,b)=>a-b),
+    latestBlue:sample[0].blue,
+    redExtrema,
+    redExcluded:redExtrema.map(value=>value.excluded),
+    blueExtrema,
+    blueExcluded:[...new Set([...blueExtrema.excluded,sample[0].blue])].sort((a,b)=>a-b),
+  }
+}
+
+// 状态：(号码下标，未分配位置，已选上期红球数，已选相邻对数（0～1），前一个号码是否选中)。
+// 在同一个条件分布中精确约束位置排除、重号1～2个以及恰好一组两连号。
+const constrainedIndex=(number,mask,repeats,adjacent,previous)=>(((number*64+mask)*3+repeats)*2+adjacent)*2+previous
+function buildConstrainedRedTable(positions,rules) {
+  const table=new Float64Array(34*64*3*2*2)
+  const latest=new Set(rules.latestReds)
+  const allowed=Array.from({length:33},(_,number)=>rules.redExcluded.reduce((mask,excluded,p)=>excluded.includes(number+1)?mask:mask|(1<<p),0))
+  for(const repeats of [1,2])for(const previous of [0,1])table[constrainedIndex(33,0,repeats,1,previous)]=1
+  for(let number=32;number>=0;number--)for(let mask=0;mask<64;mask++)for(let repeats=0;repeats<=2;repeats++)for(let adjacent=0;adjacent<=1;adjacent++)for(let previous=0;previous<=1;previous++) {
+    let weight=table[constrainedIndex(number+1,mask,repeats,adjacent,0)]
+    const nextRepeats=repeats+(latest.has(number+1)?1:0)
+    if(nextRepeats<=2&&adjacent+previous<=1)for(let p=0;p<6;p++)if((mask&allowed[number])&(1<<p))weight+=positions[p][number]*table[constrainedIndex(number+1,mask^(1<<p),nextRepeats,adjacent+previous,1)]
+    table[constrainedIndex(number,mask,repeats,adjacent,previous)]=weight
+  }
+  return {table,allowed,latest}
+}
+
+export function consecutiveRedPairs(numbers) {
+  const sorted=[...numbers].sort((a,b)=>a-b)
+  return sorted.slice(1).flatMap((number,index)=>number===sorted[index]+1?[[sorted[index],number]]:[])
+}
+
+function independentSSQ(model,rules,random) {
+  const blueWeights=model.positions[6].map((weight,index)=>rules.blueExcluded.includes(index+1)?0:weight)
+  if(!blueWeights.some(weight=>weight>0))throw new Error('当前样本按全部条件筛选后没有可用蓝球，请增加样本期数或调整条件')
+  const {table,allowed,latest}=buildConstrainedRedTable(model.positions,rules)
+  if(!(table[constrainedIndex(0,63,0,0,0)]>0))throw new Error('当前样本无法同时满足红球重号、连号及遗漏排除条件，请增加样本期数或调整条件')
   return Array.from({length:10},()=>{
-    let mask=63
-    const reds=[]
+    let mask=63,repeats=0,adjacent=0,previous=0
+    const reds=[],sequence=Array(6)
     for(let number=0;number<33&&mask;number++) {
-      const weights=[table[number+1][mask],...model.positions.slice(0,6).map((column,p)=>mask&(1<<p)?column[number]*table[number+1][mask^(1<<p)]:0)]
+      const nextRepeats=repeats+(latest.has(number+1)?1:0)
+      const nextAdjacent=adjacent+previous
+      const weights=[table[constrainedIndex(number+1,mask,repeats,adjacent,0)],...model.positions.slice(0,6).map((column,p)=>nextRepeats<=2&&nextAdjacent<=1&&((mask&allowed[number])&(1<<p))?column[number]*table[constrainedIndex(number+1,mask^(1<<p),nextRepeats,nextAdjacent,1)]:0)]
       const choice=weightedIndex(weights,random)
-      if(choice>0){reds.push(number+1);mask^=1<<(choice-1)}
+      if(choice>0){
+        const position=choice-1
+        reds.push(number+1);sequence[position]=number+1;mask^=1<<position
+        repeats=nextRepeats;adjacent=nextAdjacent;previous=1
+      }else previous=0
     }
-    if(mask)throw new Error('无法生成合法的红球组合')
-    const blue=weightedIndex(model.positions[6],random)+1
-    // 每注重新初始化 mask；不参考前面的注，不去重，也不施加跨注惩罚。
-    return {key:`${reds.join(',')}|${blue}`,reds,blue,...combinationFeatures(reds)}
+    if(mask || repeats<1 || repeats>2 || adjacent!==1)throw new Error('无法生成满足全部条件的红球组合')
+    const blue=weightedIndex(blueWeights,random)+1
+    const consecutivePairs=consecutiveRedPairs(reds)
+    if(consecutivePairs.length!==1)throw new Error('红球必须恰好只有一组两连号')
+    // 每注重新初始化状态；条件和模型保持不变，注间允许重复。
+    return {key:`${reds.join(',')}|${blue}`,reds,sequence,blue,repeatCount:repeats,consecutivePairs,...combinationFeatures(reds)}
   })
 }
 
@@ -124,7 +185,7 @@ export function fitReferenceModel(game,sample) {
 export function generateReferences(game,sample,random=Math.random) {
   const model=fitReferenceModel(game,sample)
   const {positions,...summary}=model
-  if(game==='ssq')return {...summary,rows:independentSSQ(model,random)}
+  if(game==='ssq'){const rules=buildSSQPredictionRules(sample);return {...summary,rules,rows:independentSSQ(model,rules,random)}}
   const candidates=new Map()
   // 3D 保留既有的完整枚举、分散和不放回抽样规则。
   for(let value=0;value<1000;value++) {
@@ -133,4 +194,11 @@ export function generateReferences(game,sample,random=Math.random) {
     candidates.set(key,{key,numbers,...combinationFeatures(numbers),logWeight:numbers.reduce((sum,n,p)=>sum+Math.log(model.positions[p][n]),0)})
   }
   return { ...summary, candidateCount:candidates.size, rows:selectDiverse3D([...candidates.values()],random) }
+}
+
+
+// 保留全部生成结果并附加原始序号，不改变抽样过程。
+export function retainReferences(_game,result) {
+  const rows=result.rows.map((row,index)=>({...row,ordinal:index+1}))
+  return {...result,generatedCount:result.rows.length,rows}
 }

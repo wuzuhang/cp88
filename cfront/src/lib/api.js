@@ -24,3 +24,4 @@ export async function fetchRecords(path='/records') {
 }
 export const analyzeBalls = (reds, blue) => request('/analysis', { method: 'POST', body: JSON.stringify({ red_balls: [...reds].sort((a,b) => a-b), blue_ball: blue }) })
 export const analyze3D = numbers => request('/fucai3d/analysis', { method:'POST', body:JSON.stringify({numbers}) })
+export const syncLatestRecords = (path='/records') => request(`${path}/sync`, { method:'POST', signal:AbortSignal.timeout(50000) })

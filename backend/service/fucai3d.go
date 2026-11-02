@@ -39,6 +39,23 @@ func (s *Fucai3DSyncService) FetchHistorySnapshot(ctx context.Context) ([]models
 	return records, body, err
 }
 
+func (s *Fucai3DSyncService) SyncLatest(ctx context.Context) (string, error) {
+	records, _, err := s.FetchHistorySnapshot(ctx)
+	if err != nil {
+		return "", err
+	}
+	latest := &records[0]
+	for i := range records {
+		if records[i].DrawDate > latest.DrawDate || (records[i].DrawDate == latest.DrawDate && records[i].Issue > latest.Issue) {
+			latest = &records[i]
+		}
+	}
+	if err := s.store.Upsert(ctx, latest); err != nil {
+		return "", fmt.Errorf("保存最新期号 %s: %w", latest.Issue, err)
+	}
+	return latest.Issue, nil
+}
+
 func (s *Fucai3DSyncService) SyncPreviousDay(ctx context.Context, now time.Time) (string, error) {
 	local := now.In(utils.ChinaTimezone)
 	target := time.Date(local.Year(), local.Month(), local.Day(), 0, 0, 0, 0, utils.ChinaTimezone).AddDate(0, 0, -1).Format("2006-01-02")

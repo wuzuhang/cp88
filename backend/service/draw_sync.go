@@ -35,6 +35,24 @@ func NewDrawSyncService(db *gorm.DB, sourceURL string) *DrawSyncService {
 	}
 }
 
+// SyncLatest 手动更新源文件中最新的已开奖期，不假定最后一行就是最新一期。
+func (s *DrawSyncService) SyncLatest(ctx context.Context) (string, error) {
+	records, _, err := s.FetchHistorySnapshot(ctx)
+	if err != nil {
+		return "", err
+	}
+	latest := &records[0]
+	for i := range records {
+		if records[i].DrawDate > latest.DrawDate || (records[i].DrawDate == latest.DrawDate && records[i].Issue > latest.Issue) {
+			latest = &records[i]
+		}
+	}
+	if err := s.store.Upsert(ctx, latest); err != nil {
+		return "", fmt.Errorf("保存最新期号 %s: %w", latest.Issue, err)
+	}
+	return latest.Issue, nil
+}
+
 // SyncPreviousDay 只保存东八区前一日的开奖，不以文件最后一行代替目标日期。
 func (s *DrawSyncService) SyncPreviousDay(ctx context.Context, now time.Time) (string, error) {
 	local := now.In(utils.ChinaTimezone)

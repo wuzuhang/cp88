@@ -1,6 +1,22 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { buildMatrix, formatOmission, frequencyLevel, positionFrequencyTotal, positionOmissions, randomCombination, sampleBeforeTarget } from './analysis.js'
+import { buildMatrix, formatOmission, frequencyLevel, positionFrequencyTotal, positionOmissions, predictionTargetIndex, randomCombination, sampleBeforeTarget } from './analysis.js'
+
+test('初始化预测下一期包含最新开奖，回看本期排除本期，再返回恢复初始样本',()=>{
+  const records=[draw([1,2,3,4,5,6],1),draw([7,8,9,10,11,12],2),draw([7,8,9,10,11,12],2)]
+  const nextTarget=predictionTargetIndex(0)
+  assert.equal(records[nextTarget],undefined)
+  const initial=buildMatrix(records,nextTarget,2,2)
+  assert.equal(initial.columns[0].find(item=>item.number===1).count,1)
+  assert.deepEqual(initial.omissions[0][0],{periods:0,exact:true})
+  assert.deepEqual(initial.blueOmissions[0],{periods:0,exact:true})
+  const historicalTarget=predictionTargetIndex(1)
+  assert.equal(records[historicalTarget],records[0])
+  const historical=buildMatrix(records,historicalTarget,2,2)
+  assert.equal(historical.columns[0].find(item=>item.number===1).count,0)
+  assert.deepEqual(historical.omissions[0][0],{periods:2,exact:false})
+  assert.deepEqual(buildMatrix(records,predictionTargetIndex(0),2,2),initial)
+})
 
 test('500期样本严格取目标期之前500期，前后切换同步重算频次和遗漏',()=>{
   const records=Array.from({length:506},(_,i)=>({...draw([7,8,9,10,11,12],2),issue:String(10000-i)}))

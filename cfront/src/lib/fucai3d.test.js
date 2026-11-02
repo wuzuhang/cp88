@@ -1,7 +1,20 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { build3DMatrix,random3D } from './fucai3d.js'
-import { frequencyLevel, positionFrequencyTotal } from './analysis.js'
+import { frequencyLevel, positionFrequencyTotal, predictionTargetIndex } from './analysis.js'
+
+test('3D下一期预测包含本期已开奖，历史中奖号码与本期之前的样本分别对应',()=>{
+  const records=[{num_1:0,num_2:0,num_3:0},{num_1:1,num_2:2,num_3:3},{num_1:1,num_2:2,num_3:3}]
+  const initial=build3DMatrix(records,predictionTargetIndex(0),2)
+  assert.equal(records[predictionTargetIndex(0)],undefined)
+  assert.deepEqual(positionFrequencyTotal(initial.columns,[0,0,0]),{counts:[1,1,1],total:3})
+  assert.deepEqual(initial.omissions.map(column=>column[0]),Array(3).fill({periods:0,exact:true}))
+  const historical=build3DMatrix(records,predictionTargetIndex(1),2)
+  assert.equal(records[predictionTargetIndex(1)],records[0])
+  assert.deepEqual(positionFrequencyTotal(historical.columns,[0,0,0]),{counts:[0,0,0],total:0})
+  assert.deepEqual(historical.omissions.map(column=>column[0]),Array(3).fill({periods:2,exact:false}))
+  assert.deepEqual(build3DMatrix(records,predictionTargetIndex(0),2),initial)
+})
 
 test('3D在500期真实基数下排除本期及更新开奖，零和重复号码按位置重算',()=>{
   const records=Array.from({length:506},()=>({num_1:1,num_2:2,num_3:3}))

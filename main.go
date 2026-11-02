@@ -58,7 +58,7 @@ func run() error {
 	srv := &http.Server{
 		Addr: fmt.Sprintf(":%d", config.AppConfig.Server.Port), Handler: router.InitRouter(),
 		ReadTimeout: 15 * time.Second, ReadHeaderTimeout: 5 * time.Second,
-		WriteTimeout: 15 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 1 << 20,
+		WriteTimeout: 60 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 1 << 20,
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()

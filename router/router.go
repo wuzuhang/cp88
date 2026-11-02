@@ -13,7 +13,9 @@ func InitRouter() *gin.Engine {
 	api := r.Group("/api/v1")
 	api.POST("/analysis", controller.Analyze)
 	api.GET("/records", controller.ListRecords)
+	api.POST("/records/sync", controller.SyncLatestSSQ)
 	api.GET("/fucai3d/records", controller.ListFucai3DRecords)
+	api.POST("/fucai3d/records/sync", controller.SyncLatestFucai3D)
 	api.POST("/fucai3d/analysis", controller.AnalyzeFucai3D)
 	return r
 }
